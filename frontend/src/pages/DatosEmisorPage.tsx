@@ -107,7 +107,7 @@ export function DatosEmisorPage() {
       {loadError && <Alert severity="error" sx={{ mb: 3 }}>{loadError}</Alert>}
 
       {loading ? (
-        <Stack spacing={3} sx={{ maxWidth: 520 }}>
+        <Stack spacing={3}>
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Skeleton variant="text" width={120} height={32} sx={{ mb: 2 }} />
             <Stack spacing={2}>

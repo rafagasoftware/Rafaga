@@ -11,7 +11,7 @@ export function PageHeader({ title, description, action }: Props) {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, gap: 2, flexWrap: 'wrap' }}>
       <Box>
-        <Typography variant="h3" sx={{ mb: description ? 1 : 0 }}>
+        <Typography variant="h5" sx={{ mb: description ? 1 : 0 }}>
           {title}
         </Typography>
         {description && <Typography color="text.secondary">{description}</Typography>}
