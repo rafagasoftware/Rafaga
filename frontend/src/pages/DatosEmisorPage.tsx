@@ -8,14 +8,24 @@ import {
   Skeleton,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { PageHeader } from '../components/PageHeader';
 import { CONDICIONES_IVA } from '../constants/fiscal';
 import { supabase } from '../lib/supabaseClient';
+import { ConfigurarCertificadoDialog } from './datosEmisor/ConfigurarCertificadoDialog';
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+interface EstadoCertificado {
+  alias: string;
+  ambiente: 'homologacion' | 'produccion';
+  estado_conexion: 'sin_probar' | 'ok' | 'error';
+  vencimiento: string | null;
+  ultima_verificacion: string | null;
+}
 
 interface FormValues {
   condicion_iva: string;
@@ -40,6 +50,24 @@ export function DatosEmisorPage() {
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
   const [guardadoOk, setGuardadoOk] = useState(false);
+
+  const [certificado, setCertificado] = useState<EstadoCertificado | null>(null);
+  const [dialogCertificadoAbierto, setDialogCertificadoAbierto] = useState(false);
+
+  const cargarCertificado = useCallback(async () => {
+    if (!session) return;
+    const response = await fetch(`${backendUrl}/me/certificado`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setCertificado(data);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    cargarCertificado();
+  }, [cargarCertificado]);
 
   useEffect(() => {
     if (!session) return;
@@ -178,21 +206,58 @@ export function DatosEmisorPage() {
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="h6">Conexión con ARCA</Typography>
-            <Chip label="Sin configurar" size="small" variant="outlined" />
+            {certificado ? (
+              <Chip
+                label={
+                  certificado.estado_conexion === 'ok'
+                    ? 'Conectado'
+                    : certificado.estado_conexion === 'error'
+                      ? 'Con error'
+                      : 'Sin probar'
+                }
+                color={certificado.estado_conexion === 'ok' ? 'success' : certificado.estado_conexion === 'error' ? 'error' : 'warning'}
+                size="small"
+                variant="outlined"
+              />
+            ) : (
+              <Chip label="Sin configurar" size="small" variant="outlined" />
+            )}
           </Box>
-          <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Todavía no cargaste el certificado digital de ARCA para esta cuenta. Hasta que lo hagas, no vas a poder emitir facturas.
-          </Typography>
-          <Tooltip title="Disponible próximamente">
-            <span>
-              <Button variant="outlined" disabled>
-                Configurar certificado
-              </Button>
-            </span>
-          </Tooltip>
+
+          {certificado ? (
+            <Stack spacing={0.5} sx={{ mb: 2 }}>
+              <Typography color="text.secondary">
+                Alias: {certificado.alias} · {certificado.ambiente === 'produccion' ? 'Producción' : 'Homologación (pruebas)'}
+              </Typography>
+              {certificado.ultima_verificacion && (
+                <Typography variant="body2" color="text.secondary">
+                  Última verificación: {new Date(certificado.ultima_verificacion).toLocaleString('es-AR')}
+                </Typography>
+              )}
+            </Stack>
+          ) : (
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              Todavía no cargaste el certificado digital de ARCA para esta cuenta. Hasta que lo hagas, no vas a poder emitir facturas.
+            </Typography>
+          )}
+
+          <Stack direction="row" spacing={2}>
+            <Button variant="outlined" onClick={() => setDialogCertificadoAbierto(true)}>
+              {certificado ? 'Actualizar certificado' : 'Configurar certificado'}
+            </Button>
+            <Button variant="outlined" disabled>
+              Probar conexión
+            </Button>
+          </Stack>
         </Paper>
       </Stack>
       )}
+
+      <ConfigurarCertificadoDialog
+        open={dialogCertificadoAbierto}
+        onClose={() => setDialogCertificadoAbierto(false)}
+        onGuardado={cargarCertificado}
+      />
     </>
   );
 }

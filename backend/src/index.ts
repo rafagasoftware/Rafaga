@@ -3,6 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import { requireAuth } from './middleware/auth';
 import { adminEmisoresRouter } from './routes/adminEmisores';
+import { certificadoArcaRouter } from './routes/certificadoArca';
 import { supabase } from './supabaseClient';
 
 const app = express();
@@ -16,6 +17,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/admin/emisores', adminEmisoresRouter);
+app.use('/me/certificado', certificadoArcaRouter);
 
 // Ruta de prueba: confirma que el token del frontend viaja bien y que
 // este backend puede leer la base con la service role.
