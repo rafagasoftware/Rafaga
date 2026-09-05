@@ -7,6 +7,8 @@ import { CatalogoPage } from './pages/CatalogoPage';
 import { ClientesPage } from './pages/ClientesPage';
 import { DatosEmisorPage } from './pages/DatosEmisorPage';
 import { FacturarWizardPage } from './pages/facturar/FacturarWizardPage';
+import { FacturaDetallePage } from './pages/FacturaDetallePage';
+import { FacturasPage } from './pages/FacturasPage';
 import { InicioPage } from './pages/InicioPage';
 import { LoginPage } from './pages/LoginPage';
 import { PuntosVentaPage } from './pages/PuntosVentaPage';
@@ -25,6 +27,8 @@ function App() {
           <Route path="/puntos-venta" element={<PuntosVentaPage />} />
           <Route path="/datos-emisor" element={<DatosEmisorPage />} />
           <Route path="/facturar/:modo" element={<FacturarWizardPage />} />
+          <Route path="/facturas" element={<FacturasPage />} />
+          <Route path="/facturas/:id" element={<FacturaDetallePage />} />
 
           <Route element={<AdminRoute />}>
             <Route path="/admin/invitar" element={<AdminInvitarClientePage />} />

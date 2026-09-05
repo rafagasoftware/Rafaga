@@ -3,3 +3,10 @@
 body {
   margin: 0;
 }
+
+@media print {
+  .MuiAppBar-root,
+  .no-imprimir {
+    display: none !important;
+  }
+}

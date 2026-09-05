@@ -1,7 +1,7 @@
 export const TIPOS_COMPROBANTE = [
-  { value: 'factura_a', label: 'Factura A' },
-  { value: 'factura_b', label: 'Factura B' },
-  { value: 'factura_c', label: 'Factura C' },
+  { value: 'factura_a', label: 'Factura A', letra: 'A', codigo: '001' },
+  { value: 'factura_b', label: 'Factura B', letra: 'B', codigo: '006' },
+  { value: 'factura_c', label: 'Factura C', letra: 'C', codigo: '011' },
 ];
 
 export const CONCEPTOS = [

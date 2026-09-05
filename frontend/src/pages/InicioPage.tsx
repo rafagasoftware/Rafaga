@@ -1,6 +1,7 @@
 import { Box, Chip, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { supabase } from '../lib/supabaseClient';
 import { formatearMoneda } from './facturar/calculos';
 
@@ -12,21 +13,8 @@ interface EmisionReciente {
   cliente: { razon_social: string } | null;
 }
 
-const ESTADO_COLOR: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
-  emitida: 'success',
-  pendiente: 'warning',
-  con_error: 'error',
-  anulada: 'default',
-};
-
-const ESTADO_LABEL: Record<string, string> = {
-  emitida: 'Emitida',
-  pendiente: 'Pendiente',
-  con_error: 'Con error',
-  anulada: 'Anulada',
-};
-
 export function InicioPage() {
+  const navigate = useNavigate();
   const [ultimas, setUltimas] = useState<EmisionReciente[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -92,9 +80,12 @@ export function InicioPage() {
         </Paper>
       </Box>
 
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        Últimas emisiones
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5">Últimas emisiones</Typography>
+        <Typography component={RouterLink} to="/facturas" variant="body2" sx={{ color: 'primary.main' }}>
+          Ver todas
+        </Typography>
+      </Box>
 
       {!loading && ultimas.length === 0 ? (
         <Typography color="text.secondary">Todavía no cargaste ninguna factura.</Typography>
@@ -111,7 +102,7 @@ export function InicioPage() {
             </TableHead>
             <TableBody>
               {ultimas.map((factura) => (
-                <TableRow key={factura.id} hover>
+                <TableRow key={factura.id} hover onClick={() => navigate(`/facturas/${factura.id}`)} sx={{ cursor: 'pointer' }}>
                   <TableCell>{factura.cliente?.razon_social ?? '—'}</TableCell>
                   <TableCell>{new Date(factura.creado_en).toLocaleDateString('es-AR')}</TableCell>
                   <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
