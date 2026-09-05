@@ -1,9 +1,29 @@
+import ArrowForwardOutlinedIcon from '@mui/icons-material/ArrowForwardOutlined';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import { Box, Chip, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { supabase } from '../lib/supabaseClient';
 import { formatearMoneda } from './facturar/calculos';
+
+const tarjetaModoSx = {
+  p: 3,
+  width: 280,
+  minHeight: 200,
+  textDecoration: 'none',
+  color: 'text.primary',
+  display: 'flex',
+  flexDirection: 'column',
+  transition: 'border-color .15s, background-color .15s, transform .15s',
+  '&:hover': {
+    borderColor: 'primary.main',
+    bgcolor: (theme: import('@mui/material/styles').Theme) => alpha(theme.palette.primary.main, 0.04),
+    transform: 'translateY(-2px)',
+  },
+} as const;
 
 interface EmisionReciente {
   id: string;
@@ -37,45 +57,55 @@ export function InicioPage() {
       </Typography>
 
       <Box sx={{ display: 'flex', gap: 3, mb: 5, flexWrap: 'wrap' }}>
-        <Paper
-          component={RouterLink}
-          to="/facturar/simple"
-          variant="outlined"
-          sx={{
-            p: 3,
-            width: 280,
-            textDecoration: 'none',
-            color: 'text.primary',
-            display: 'block',
-            transition: 'border-color .15s',
-            '&:hover': { borderColor: 'primary.main' },
-          }}
-        >
+        <Paper component={RouterLink} to="/facturar/simple" variant="outlined" sx={tarjetaModoSx}>
+          <Box
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+              mb: 2,
+            }}
+          >
+            <ReceiptLongOutlinedIcon sx={{ color: 'primary.main' }} />
+          </Box>
           <Typography variant="h5" sx={{ mb: 1 }}>
             Factura simple
           </Typography>
           <Typography color="text.secondary">Una factura para un solo cliente.</Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Typography sx={{ color: 'primary.main', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5, mt: 2 }}>
+            Empezar <ArrowForwardOutlinedIcon fontSize="small" />
+          </Typography>
         </Paper>
 
-        <Paper
-          component={RouterLink}
-          to="/facturar/multiple"
-          variant="outlined"
-          sx={{
-            p: 3,
-            width: 280,
-            textDecoration: 'none',
-            color: 'text.primary',
-            display: 'block',
-            transition: 'border-color .15s',
-            '&:hover': { borderColor: 'primary.main' },
-          }}
-        >
+        <Paper component={RouterLink} to="/facturar/multiple" variant="outlined" sx={tarjetaModoSx}>
+          <Box
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+              mb: 2,
+            }}
+          >
+            <GroupsOutlinedIcon sx={{ color: 'primary.main' }} />
+          </Box>
           <Typography variant="h5" sx={{ mb: 1 }}>
             Facturación múltiple
           </Typography>
           <Typography color="text.secondary">
             Cargás los ítems una sola vez y salen varias facturas, una por cliente. Para cuotas, expensas o abonos.
+          </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Typography sx={{ color: 'primary.main', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5, mt: 2 }}>
+            Empezar <ArrowForwardOutlinedIcon fontSize="small" />
           </Typography>
         </Paper>
       </Box>
