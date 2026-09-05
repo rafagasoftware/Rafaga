@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { PageHeader } from '../components/PageHeader';
 import { CONDICIONES_IVA } from '../constants/fiscal';
 import { supabase } from '../lib/supabaseClient';
 
@@ -101,9 +102,7 @@ export function DatosEmisorPage() {
 
   return (
     <>
-      <Typography variant="h3" sx={{ mb: 3 }}>
-        Datos del emisor
-      </Typography>
+      <PageHeader title="Datos del emisor" />
 
       {loadError && <Alert severity="error" sx={{ mb: 3 }}>{loadError}</Alert>}
 
@@ -126,7 +125,7 @@ export function DatosEmisorPage() {
           </Paper>
         </Stack>
       ) : (
-      <Stack spacing={3} sx={{ maxWidth: 520 }}>
+      <Stack spacing={3}>
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Perfil fiscal

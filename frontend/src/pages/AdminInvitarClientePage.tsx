@@ -1,6 +1,7 @@
-import { Alert, Box, Button, MenuItem, Paper, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, MenuItem, Paper, TextField } from '@mui/material';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { PageHeader } from '../components/PageHeader';
 import { CONDICIONES_IVA } from '../constants/fiscal';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -58,12 +59,7 @@ export function AdminInvitarClientePage() {
 
   return (
     <>
-      <Typography variant="h3" sx={{ mb: 1 }}>
-        Invitar un cliente nuevo
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Le va a llegar un correo para que cree su contraseña y empiece a usar Rafaga.
-      </Typography>
+      <PageHeader title="Invitar un cliente nuevo" description="Le va a llegar un correo para que cree su contraseña y empiece a usar Rafaga." />
 
       <Paper variant="outlined" sx={{ p: 4, maxWidth: 480 }}>
         <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

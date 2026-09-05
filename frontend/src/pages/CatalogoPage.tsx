@@ -3,7 +3,6 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import {
   Alert,
-  Box,
   Button,
   IconButton,
   InputAdornment,
@@ -12,51 +11,54 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { PageHeader } from '../components/PageHeader';
 import { TableSkeletonRows } from '../components/TableSkeletonRows';
-import { CatalogoItemFormDialog, type CatalogoItemFormValues } from './catalogo/CatalogoItemFormDialog';
+import { useTablaRemota } from '../hooks/useTablaRemota';
 import { supabase } from '../lib/supabaseClient';
 import type { CatalogoItem } from '../types/domain';
+import { CatalogoItemFormDialog, type CatalogoItemFormValues } from './catalogo/CatalogoItemFormDialog';
 
 export function CatalogoPage() {
-  const [items, setItems] = useState<CatalogoItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [busqueda, setBusqueda] = useState('');
 
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [itemEditando, setItemEditando] = useState<CatalogoItem | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
-  async function cargar() {
-    setLoading(true);
-    setLoadError(null);
+  const fetchPage = useCallback(
+    async ({ busqueda, pagina, filasPorPagina }: { busqueda: string; pagina: number; filasPorPagina: number }) => {
+      let query = supabase.from('catalogo_items').select('*', { count: 'exact' });
 
-    const { data, error } = await supabase.from('catalogo_items').select('*').order('codigo');
-    if (error) {
-      setLoadError('No se pudo cargar el catálogo.');
-    } else {
-      setItems(data ?? []);
-    }
-    setLoading(false);
-  }
+      if (busqueda) {
+        const esNumerico = /^\d+$/.test(busqueda);
+        query = esNumerico
+          ? query.or(`descripcion.ilike.%${busqueda}%,codigo.eq.${Number(busqueda)}`)
+          : query.ilike('descripcion', `%${busqueda}%`);
+      }
 
-  useEffect(() => {
-    cargar();
-  }, []);
+      const { data, count, error } = await query
+        .order('codigo')
+        .range(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina - 1);
 
-  const itemsFiltrados = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase();
-    if (!texto) return items;
-    return items.filter(
-      (item) => String(item.codigo).includes(texto) || item.descripcion.toLowerCase().includes(texto),
-    );
-  }, [items, busqueda]);
+      if (error) {
+        setLoadError('No se pudo cargar el catálogo.');
+        return { data: [], count: 0 };
+      }
+      setLoadError(null);
+      return { data: (data ?? []) as CatalogoItem[], count: count ?? 0 };
+    },
+    [],
+  );
+
+  const { busqueda, setBusqueda, pagina, setPagina, filasPorPagina, setFilasPorPagina, filas, total, loading, recargar } =
+    useTablaRemota(fetchPage);
 
   function abrirNuevo() {
     setItemEditando(null);
@@ -91,24 +93,20 @@ export function CatalogoPage() {
 
     setGuardando(false);
     setDialogAbierto(false);
-    cargar();
+    recargar();
   }
 
   return (
     <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-        <Box>
-          <Typography variant="h3" sx={{ mb: 1 }}>
-            Catálogo de ítems
-          </Typography>
-          <Typography color="text.secondary">
-            Productos y servicios reutilizables. El precio se carga cada vez al armar una factura.
-          </Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNuevo} size="large">
-          Nuevo ítem
-        </Button>
-      </Box>
+      <PageHeader
+        title="Catálogo de ítems"
+        description="Productos y servicios reutilizables. El precio se carga cada vez al armar una factura."
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNuevo} size="large">
+            Nuevo ítem
+          </Button>
+        }
+      />
 
       {loadError && <Alert severity="error" sx={{ mb: 2 }}>{loadError}</Alert>}
 
@@ -141,16 +139,16 @@ export function CatalogoPage() {
           </TableHead>
           <TableBody>
             {loading && <TableSkeletonRows columns={4} />}
-            {!loading && itemsFiltrados.length === 0 && (
+            {!loading && filas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4}>
                   <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                    {items.length === 0 ? 'Todavía no cargaste ningún ítem.' : 'No hay ítems que coincidan con la búsqueda.'}
+                    {total === 0 && !busqueda ? 'Todavía no cargaste ningún ítem.' : 'No hay ítems que coincidan con la búsqueda.'}
                   </Typography>
                 </TableCell>
               </TableRow>
             )}
-            {itemsFiltrados.map((item) => (
+            {filas.map((item) => (
               <TableRow key={item.id} hover>
                 <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{String(item.codigo).padStart(4, '0')}</TableCell>
                 <TableCell>{item.descripcion}</TableCell>
@@ -164,6 +162,17 @@ export function CatalogoPage() {
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={total}
+          page={pagina}
+          onPageChange={(_e, nuevaPagina) => setPagina(nuevaPagina)}
+          rowsPerPage={filasPorPagina}
+          onRowsPerPageChange={(e) => setFilasPorPagina(Number(e.target.value))}
+          rowsPerPageOptions={[10, 25, 50]}
+          labelRowsPerPage="Filas por página"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+        />
       </Paper>
 
       <CatalogoItemFormDialog

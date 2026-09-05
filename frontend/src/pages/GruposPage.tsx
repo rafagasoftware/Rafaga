@@ -1,70 +1,69 @@
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import { Alert, Box, Button, IconButton, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import SearchIcon from '@mui/icons-material/Search';
+import {
+  Alert,
+  Button,
+  IconButton,
+  InputAdornment,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useCallback, useState } from 'react';
+import { PageHeader } from '../components/PageHeader';
 import { TableSkeletonRows } from '../components/TableSkeletonRows';
+import { useTablaRemota } from '../hooks/useTablaRemota';
 import { supabase } from '../lib/supabaseClient';
 import type { Cliente, Grupo } from '../types/domain';
 import { GrupoFormDialog } from './grupos/GrupoFormDialog';
 
-export function GruposPage() {
-  const [grupos, setGrupos] = useState<Grupo[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [clienteGrupos, setClienteGrupos] = useState<Record<string, string[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+interface GrupoFila extends Grupo {
+  clientes_grupos: { count: number }[];
+}
 
+export function GruposPage() {
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [grupoEditando, setGrupoEditando] = useState<Grupo | null>(null);
+  const [clientesDelGrupoEditando, setClientesDelGrupoEditando] = useState<Cliente[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
-  async function cargarTodo() {
-    setLoading(true);
-    setLoadError(null);
+  const fetchPage = useCallback(
+    async ({ busqueda, pagina, filasPorPagina }: { busqueda: string; pagina: number; filasPorPagina: number }) => {
+      let query = supabase.from('grupos').select('*, clientes_grupos(count)', { count: 'exact' });
+      if (busqueda) query = query.ilike('nombre', `%${busqueda}%`);
 
-    const [gruposRes, clientesRes, relacionesRes] = await Promise.all([
-      supabase.from('grupos').select('*').order('nombre'),
-      supabase.from('clientes').select('*').order('razon_social'),
-      supabase.from('clientes_grupos').select('cliente_id, grupo_id'),
-    ]);
+      const { data, count } = await query
+        .order('nombre')
+        .range(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina - 1);
 
-    if (gruposRes.error || clientesRes.error || relacionesRes.error) {
-      setLoadError('No se pudieron cargar los grupos.');
-      setLoading(false);
-      return;
-    }
+      return { data: (data ?? []) as GrupoFila[], count: count ?? 0 };
+    },
+    [],
+  );
 
-    const mapa: Record<string, string[]> = {};
-    for (const relacion of relacionesRes.data ?? []) {
-      mapa[relacion.cliente_id] = [...(mapa[relacion.cliente_id] ?? []), relacion.grupo_id];
-    }
-
-    setGrupos(gruposRes.data ?? []);
-    setClientes(clientesRes.data ?? []);
-    setClienteGrupos(mapa);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    cargarTodo();
-  }, []);
-
-  function clientesDelGrupo(grupoId: string): string[] {
-    return Object.entries(clienteGrupos)
-      .filter(([, grupoIds]) => grupoIds.includes(grupoId))
-      .map(([clienteId]) => clienteId);
-  }
+  const { busqueda, setBusqueda, pagina, setPagina, filasPorPagina, setFilasPorPagina, filas, total, loading, recargar } =
+    useTablaRemota(fetchPage);
 
   function abrirNuevo() {
     setGrupoEditando(null);
+    setClientesDelGrupoEditando([]);
     setErrorGuardado(null);
     setDialogAbierto(true);
   }
 
-  function abrirEdicion(grupo: Grupo) {
+  async function abrirEdicion(grupo: Grupo) {
     setGrupoEditando(grupo);
     setErrorGuardado(null);
+    const { data } = await supabase.from('clientes_grupos').select('cliente:clientes(*)').eq('grupo_id', grupo.id);
+    setClientesDelGrupoEditando(((data ?? []) as unknown as { cliente: Cliente }[]).map((r) => r.cliente).filter(Boolean));
     setDialogAbierto(true);
   }
 
@@ -99,26 +98,39 @@ export function GruposPage() {
 
     setGuardando(false);
     setDialogAbierto(false);
-    cargarTodo();
+    recargar();
   }
 
   return (
     <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-        <Box>
-          <Typography variant="h3" sx={{ mb: 1 }}>
-            Grupos
-          </Typography>
-          <Typography color="text.secondary">
-            Organizá tus clientes en grupos para facturarles a todos juntos desde facturación múltiple.
-          </Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNuevo} size="large">
-          Nuevo grupo
-        </Button>
-      </Box>
+      <PageHeader
+        title="Grupos"
+        description="Organizá tus clientes en grupos para facturarles a todos juntos desde facturación múltiple."
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNuevo} size="large">
+            Nuevo grupo
+          </Button>
+        }
+      />
 
-      {loadError && <Alert severity="error" sx={{ mb: 2 }}>{loadError}</Alert>}
+      {errorGuardado && !dialogAbierto && <Alert severity="error" sx={{ mb: 2 }}>{errorGuardado}</Alert>}
+
+      <TextField
+        placeholder="Buscar por nombre"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
 
       <Paper variant="outlined">
         <Table>
@@ -131,19 +143,19 @@ export function GruposPage() {
           </TableHead>
           <TableBody>
             {loading && <TableSkeletonRows columns={3} />}
-            {!loading && grupos.length === 0 && (
+            {!loading && filas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={3}>
                   <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                    Todavía no creaste ningún grupo.
+                    {total === 0 && !busqueda ? 'Todavía no creaste ningún grupo.' : 'No hay grupos que coincidan con la búsqueda.'}
                   </Typography>
                 </TableCell>
               </TableRow>
             )}
-            {grupos.map((grupo) => (
+            {filas.map((grupo) => (
               <TableRow key={grupo.id} hover>
                 <TableCell>{grupo.nombre}</TableCell>
-                <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{clientesDelGrupo(grupo.id).length}</TableCell>
+                <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{grupo.clientes_grupos[0]?.count ?? 0}</TableCell>
                 <TableCell align="right">
                   <IconButton aria-label="Editar grupo" onClick={() => abrirEdicion(grupo)}>
                     <EditOutlinedIcon fontSize="small" />
@@ -153,13 +165,23 @@ export function GruposPage() {
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={total}
+          page={pagina}
+          onPageChange={(_e, nuevaPagina) => setPagina(nuevaPagina)}
+          rowsPerPage={filasPorPagina}
+          onRowsPerPageChange={(e) => setFilasPorPagina(Number(e.target.value))}
+          rowsPerPageOptions={[10, 25, 50]}
+          labelRowsPerPage="Filas por página"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+        />
       </Paper>
 
       <GrupoFormDialog
         open={dialogAbierto}
         grupo={grupoEditando}
-        clientes={clientes}
-        clienteIdsIniciales={grupoEditando ? clientesDelGrupo(grupoEditando.id) : []}
+        clientesIniciales={clientesDelGrupoEditando}
         saving={guardando}
         error={errorGuardado}
         onClose={() => setDialogAbierto(false)}

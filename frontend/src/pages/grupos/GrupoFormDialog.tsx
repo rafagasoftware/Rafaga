@@ -11,31 +11,71 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { supabase } from '../../lib/supabaseClient';
 import type { Cliente, Grupo } from '../../types/domain';
 
 interface Props {
   open: boolean;
   grupo: Grupo | null;
-  clientes: Cliente[];
-  clienteIdsIniciales: string[];
+  clientesIniciales: Cliente[];
   saving: boolean;
   error: string | null;
   onClose: () => void;
   onSave: (nombre: string, clienteIds: string[]) => void;
 }
 
-export function GrupoFormDialog({ open, grupo, clientes, clienteIdsIniciales, saving, error, onClose, onSave }: Props) {
+export function GrupoFormDialog({ open, grupo, clientesIniciales, saving, error, onClose, onSave }: Props) {
   const [nombre, setNombre] = useState('');
-  const [clienteIds, setClienteIds] = useState<string[]>([]);
+  const [seleccionados, setSeleccionados] = useState<Cliente[]>([]);
+  const [inputBusqueda, setInputBusqueda] = useState('');
+  const busquedaConDemora = useDebouncedValue(inputBusqueda);
+  const [opciones, setOpciones] = useState<Cliente[]>([]);
+  const [buscando, setBuscando] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setNombre(grupo?.nombre ?? '');
-    setClienteIds(clienteIdsIniciales);
-  }, [open, grupo, clienteIdsIniciales]);
+    setSeleccionados(clientesIniciales);
+    setInputBusqueda('');
+  }, [open, grupo, clientesIniciales]);
 
-  const clientesSeleccionados = clientes.filter((c) => clienteIds.includes(c.id));
+  // Busca en el backend a medida que se escribe (con debounce). Al abrir
+  // el campo sin nada escrito, muestra los primeros clientes como punto
+  // de partida en vez de un desplegable vacío.
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    setBuscando(true);
+
+    let consulta = supabase.from('clientes').select('*').order('razon_social').limit(20);
+    if (busquedaConDemora) {
+      consulta = supabase
+        .from('clientes')
+        .select('*')
+        .or(`razon_social.ilike.%${busquedaConDemora}%,numero_documento.ilike.%${busquedaConDemora}%`)
+        .order('razon_social')
+        .limit(20);
+    }
+
+    consulta.then(({ data }) => {
+      if (cancelado) return;
+      setOpciones(data ?? []);
+      setBuscando(false);
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [open, busquedaConDemora]);
+
+  // Para no perder de la lista a los ya elegidos cuando no aparecen
+  // entre los resultados de búsqueda actuales.
+  const opcionesCombinadas = useMemo(() => {
+    const idsEnOpciones = new Set(opciones.map((o) => o.id));
+    return [...opciones, ...seleccionados.filter((s) => !idsEnOpciones.has(s.id))];
+  }, [opciones, seleccionados]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
@@ -49,11 +89,16 @@ export function GrupoFormDialog({ open, grupo, clientes, clienteIdsIniciales, sa
           </Typography>
           <Autocomplete
             multiple
-            options={clientes}
-            value={clientesSeleccionados}
-            onChange={(_e, valor) => setClienteIds(valor.map((c) => c.id))}
+            options={opcionesCombinadas}
+            value={seleccionados}
+            onChange={(_e, valor) => setSeleccionados(valor)}
+            inputValue={inputBusqueda}
+            onInputChange={(_e, valor) => setInputBusqueda(valor)}
             getOptionLabel={(cliente) => `${cliente.razon_social} — ${cliente.tipo_documento} ${cliente.numero_documento}`}
             isOptionEqualToValue={(a, b) => a.id === b.id}
+            filterOptions={(opciones) => opciones}
+            loading={buscando}
+            loadingText="Buscando…"
             disableCloseOnSelect
             renderOption={(props, cliente, { selected }) => {
               const { key, ...rest } = props;
@@ -65,8 +110,8 @@ export function GrupoFormDialog({ open, grupo, clientes, clienteIdsIniciales, sa
               );
             }}
             slotProps={{ chip: { size: 'small' } }}
-            renderInput={(params) => <TextField {...params} placeholder="Buscar cliente por nombre o documento" />}
-            noOptionsText="No hay clientes que coincidan"
+            renderInput={(params) => <TextField {...params} placeholder="Escribí para buscar un cliente" />}
+            noOptionsText={inputBusqueda.trim() ? 'No hay clientes que coincidan' : 'No tenés clientes cargados todavía'}
           />
         </Box>
 
@@ -76,7 +121,11 @@ export function GrupoFormDialog({ open, grupo, clientes, clienteIdsIniciales, sa
         <Button onClick={onClose} disabled={saving}>
           Cancelar
         </Button>
-        <Button variant="contained" disabled={saving || !nombre.trim()} onClick={() => onSave(nombre.trim(), clienteIds)}>
+        <Button
+          variant="contained"
+          disabled={saving || !nombre.trim()}
+          onClick={() => onSave(nombre.trim(), seleccionados.map((c) => c.id))}
+        >
           {saving ? 'Guardando…' : 'Guardar'}
         </Button>
       </DialogActions>

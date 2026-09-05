@@ -9,15 +9,18 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FacturaDetalleModal } from '../components/FacturaDetalleModal';
+import { PageHeader } from '../components/PageHeader';
 import { TableSkeletonRows } from '../components/TableSkeletonRows';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { TIPOS_COMPROBANTE } from '../constants/facturacion';
+import { useTablaRemota } from '../hooks/useTablaRemota';
 import { supabase } from '../lib/supabaseClient';
 import { formatearMoneda } from './facturar/calculos';
 
@@ -32,45 +35,43 @@ interface FilaFactura {
 }
 
 export function FacturasPage() {
-  const [facturas, setFacturas] = useState<FilaFactura[]>([]);
-  const [loading, setLoading] = useState(true);
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
 
-  const [busqueda, setBusqueda] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
 
-  useEffect(() => {
-    supabase
-      .from('facturas')
-      .select('id, numero_comprobante, cae, importe_total, estado, cliente:clientes(razon_social), lote:lotes(tipo_comprobante, fecha_emision, total_clientes)')
-      .order('creado_en', { ascending: false })
-      .then(({ data }) => {
-        setFacturas((data as unknown as FilaFactura[]) ?? []);
-        setLoading(false);
-      });
-  }, []);
+  const fetchPage = useCallback(
+    async ({ busqueda, pagina, filasPorPagina }: { busqueda: string; pagina: number; filasPorPagina: number }) => {
+      let query = supabase
+        .from('facturas')
+        .select(
+          'id, numero_comprobante, cae, importe_total, estado, cliente:clientes!inner(razon_social), lote:lotes!inner(tipo_comprobante, fecha_emision, total_clientes)',
+          { count: 'exact' },
+        );
 
-  const filtradas = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase();
-    return facturas.filter((factura) => {
-      const coincideTexto = !texto || (factura.cliente?.razon_social ?? '').toLowerCase().includes(texto);
-      const coincideTipo = !tipoFiltro || factura.lote?.tipo_comprobante === tipoFiltro;
-      const coincideEstado = !estadoFiltro || factura.estado === estadoFiltro;
-      const fecha = factura.lote?.fecha_emision ?? '';
-      const coincideDesde = !desde || fecha >= desde;
-      const coincideHasta = !hasta || fecha <= hasta;
-      return coincideTexto && coincideTipo && coincideEstado && coincideDesde && coincideHasta;
-    });
-  }, [facturas, busqueda, tipoFiltro, estadoFiltro, desde, hasta]);
+      if (busqueda) query = query.ilike('cliente.razon_social', `%${busqueda}%`);
+      if (tipoFiltro) query = query.eq('lote.tipo_comprobante', tipoFiltro);
+      if (estadoFiltro) query = query.eq('estado', estadoFiltro);
+      if (desde) query = query.gte('lote.fecha_emision', desde);
+      if (hasta) query = query.lte('lote.fecha_emision', hasta);
+
+      const { data, count } = await query
+        .order('creado_en', { ascending: false })
+        .range(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina - 1);
+
+      return { data: (data as unknown as FilaFactura[]) ?? [], count: count ?? 0 };
+    },
+    [tipoFiltro, estadoFiltro, desde, hasta],
+  );
+
+  const { busqueda, setBusqueda, pagina, setPagina, filasPorPagina, setFilasPorPagina, filas, total, loading } =
+    useTablaRemota(fetchPage);
 
   return (
     <>
-      <Typography variant="h3" sx={{ mb: 3 }}>
-        Facturas
-      </Typography>
+      <PageHeader title="Facturas" />
 
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
         <TextField
@@ -135,16 +136,18 @@ export function FacturasPage() {
           </TableHead>
           <TableBody>
             {loading && <TableSkeletonRows columns={7} />}
-            {!loading && filtradas.length === 0 && (
+            {!loading && filas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7}>
                   <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                    {facturas.length === 0 ? 'Todavía no cargaste ninguna factura.' : 'No hay facturas que coincidan con el filtro.'}
+                    {total === 0 && !busqueda && !tipoFiltro && !estadoFiltro && !desde && !hasta
+                      ? 'Todavía no cargaste ninguna factura.'
+                      : 'No hay facturas que coincidan con el filtro.'}
                   </Typography>
                 </TableCell>
               </TableRow>
             )}
-            {filtradas.map((factura) => (
+            {filas.map((factura) => (
               <TableRow key={factura.id} hover onClick={() => setSeleccionada(factura.id)} sx={{ cursor: 'pointer' }}>
                 <TableCell>{factura.lote ? new Date(factura.lote.fecha_emision).toLocaleDateString('es-AR') : '—'}</TableCell>
                 <TableCell>
@@ -166,6 +169,17 @@ export function FacturasPage() {
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={total}
+          page={pagina}
+          onPageChange={(_e, nuevaPagina) => setPagina(nuevaPagina)}
+          rowsPerPage={filasPorPagina}
+          onRowsPerPageChange={(e) => setFilasPorPagina(Number(e.target.value))}
+          rowsPerPageOptions={[10, 25, 50]}
+          labelRowsPerPage="Filas por página"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+        />
       </Paper>
 
       <FacturaDetalleModal facturaId={seleccionada} onClose={() => setSeleccionada(null)} />
