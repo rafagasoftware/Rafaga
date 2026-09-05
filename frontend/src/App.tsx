@@ -6,6 +6,7 @@ import { AdminInvitarClientePage } from './pages/AdminInvitarClientePage';
 import { CatalogoPage } from './pages/CatalogoPage';
 import { ClientesPage } from './pages/ClientesPage';
 import { DatosEmisorPage } from './pages/DatosEmisorPage';
+import { FacturarWizardPage } from './pages/facturar/FacturarWizardPage';
 import { InicioPage } from './pages/InicioPage';
 import { LoginPage } from './pages/LoginPage';
 import { PuntosVentaPage } from './pages/PuntosVentaPage';
@@ -23,6 +24,7 @@ function App() {
           <Route path="/catalogo" element={<CatalogoPage />} />
           <Route path="/puntos-venta" element={<PuntosVentaPage />} />
           <Route path="/datos-emisor" element={<DatosEmisorPage />} />
+          <Route path="/facturar/:modo" element={<FacturarWizardPage />} />
 
           <Route element={<AdminRoute />}>
             <Route path="/admin/invitar" element={<AdminInvitarClientePage />} />
