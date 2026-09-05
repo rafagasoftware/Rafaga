@@ -1,0 +1,35 @@
+import 'dotenv/config';
+import cors from 'cors';
+import express from 'express';
+import { requireAuth } from './middleware/auth';
+import { supabase } from './supabaseClient';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
+});
+
+// Ruta de prueba: confirma que el token del frontend viaja bien y que
+// este backend puede leer la base con la service role.
+app.get('/me', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('emisores')
+    .select('*')
+    .eq('id', req.emisorId)
+    .single();
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.json(data);
+});
+
+const port = process.env.PORT ? Number(process.env.PORT) : 3001;
+app.listen(port, () => {
+  console.log(`Rafaga backend escuchando en http://localhost:${port}`);
+});

@@ -25,3 +25,8 @@ dist-ssr
 
 # Esquema de base de datos (contiene detalles de la estructura interna)
 supabase/schema.sql
+
+# Variables de entorno (claves de Supabase, nunca al repo)
+.env
+.env.local
+.env.*.local
