@@ -2,6 +2,7 @@ import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
 import { requireAuth } from './middleware/auth';
+import { adminEmisoresRouter } from './routes/adminEmisores';
 import { supabase } from './supabaseClient';
 
 const app = express();
@@ -11,6 +12,8 @@ app.use(express.json());
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
+
+app.use('/admin/emisores', adminEmisoresRouter);
 
 // Ruta de prueba: confirma que el token del frontend viaja bien y que
 // este backend puede leer la base con la service role.
