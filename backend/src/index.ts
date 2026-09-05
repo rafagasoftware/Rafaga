@@ -6,7 +6,9 @@ import { adminEmisoresRouter } from './routes/adminEmisores';
 import { supabase } from './supabaseClient';
 
 const app = express();
-app.use(cors());
+// Mismo valor que ya usábamos para el link de invitación: en local es
+// localhost, en producción va a ser la URL real del frontend en Vercel.
+app.use(cors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:5173' }));
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
