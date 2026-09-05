@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Paper, Step, StepLabel, Stepper, Typography } from '@mui/material';
+import { Alert, Box, Button, Paper, Skeleton, Stack, Step, StepLabel, Stepper, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
@@ -194,7 +194,17 @@ export function FacturarWizardPage() {
   }
 
   if (cargando) {
-    return <Typography color="text.secondary">Cargando…</Typography>;
+    return (
+      <Box>
+        <Skeleton variant="text" width={260} height={44} sx={{ mb: 1 }} />
+        <Skeleton variant="rounded" height={40} sx={{ mb: 4, maxWidth: 720 }} />
+        <Stack spacing={2.5} sx={{ maxWidth: 480 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} variant="rounded" height={56} />
+          ))}
+        </Stack>
+      </Box>
+    );
   }
 
   return (

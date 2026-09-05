@@ -17,6 +17,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
+import { TableSkeletonRows } from '../components/TableSkeletonRows';
 import { CatalogoItemFormDialog, type CatalogoItemFormValues } from './catalogo/CatalogoItemFormDialog';
 import { supabase } from '../lib/supabaseClient';
 import type { CatalogoItem } from '../types/domain';
@@ -139,6 +140,7 @@ export function CatalogoPage() {
             </TableRow>
           </TableHead>
           <TableBody>
+            {loading && <TableSkeletonRows columns={4} />}
             {!loading && itemsFiltrados.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4}>

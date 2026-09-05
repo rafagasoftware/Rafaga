@@ -5,6 +5,7 @@ import {
   Chip,
   MenuItem,
   Paper,
+  Skeleton,
   Stack,
   TextField,
   Tooltip,
@@ -98,10 +99,6 @@ export function DatosEmisorPage() {
     setGuardadoOk(true);
   }
 
-  if (loading) {
-    return <Typography color="text.secondary">Cargando…</Typography>;
-  }
-
   return (
     <>
       <Typography variant="h3" sx={{ mb: 3 }}>
@@ -110,6 +107,25 @@ export function DatosEmisorPage() {
 
       {loadError && <Alert severity="error" sx={{ mb: 3 }}>{loadError}</Alert>}
 
+      {loading ? (
+        <Stack spacing={3} sx={{ maxWidth: 520 }}>
+          <Paper variant="outlined" sx={{ p: 3 }}>
+            <Skeleton variant="text" width={120} height={32} sx={{ mb: 2 }} />
+            <Stack spacing={2}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} variant="rounded" height={56} />
+              ))}
+              <Skeleton variant="rounded" width={160} height={44} />
+            </Stack>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 3 }}>
+            <Skeleton variant="text" width={180} height={32} sx={{ mb: 1 }} />
+            <Skeleton variant="text" width="90%" />
+            <Skeleton variant="text" width="60%" sx={{ mb: 2 }} />
+            <Skeleton variant="rounded" width={180} height={44} />
+          </Paper>
+        </Stack>
+      ) : (
       <Stack spacing={3} sx={{ maxWidth: 520 }}>
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
@@ -177,6 +193,7 @@ export function DatosEmisorPage() {
           </Tooltip>
         </Paper>
       </Stack>
+      )}
     </>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { FacturaDetalleModal } from '../components/FacturaDetalleModal';
+import { TableSkeletonRows } from '../components/TableSkeletonRows';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { TIPOS_COMPROBANTE } from '../constants/facturacion';
 import { supabase } from '../lib/supabaseClient';
@@ -133,6 +134,7 @@ export function FacturasPage() {
             </TableRow>
           </TableHead>
           <TableBody>
+            {loading && <TableSkeletonRows columns={7} />}
             {!loading && filtradas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7}>

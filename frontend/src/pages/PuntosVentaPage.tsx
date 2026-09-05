@@ -2,6 +2,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { Alert, Box, Button, Chip, IconButton, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { TableSkeletonRows } from '../components/TableSkeletonRows';
 import { PuntoVentaFormDialog, type PuntoVentaFormValues } from './puntosVenta/PuntoVentaFormDialog';
 import { supabase } from '../lib/supabaseClient';
 import type { PuntoVenta } from '../types/domain';
@@ -106,6 +107,7 @@ export function PuntosVentaPage() {
             </TableRow>
           </TableHead>
           <TableBody>
+            {loading && <TableSkeletonRows columns={4} />}
             {!loading && puntos.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4}>

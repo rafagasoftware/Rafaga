@@ -11,6 +11,7 @@ import {
   Grid,
   IconButton,
   Paper,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -146,7 +147,36 @@ export function FacturaDetalleModal({ facturaId, onClose }: Props) {
       </IconButton>
 
       <DialogContent className="rafaga-imprimible" sx={{ pt: 5 }}>
-        {loading && <Typography color="text.secondary">Cargando…</Typography>}
+        {loading && (
+          <Box>
+            <Skeleton variant="rounded" width={300} height={40} sx={{ mb: 2 }} />
+            <Paper variant="outlined" sx={{ p: 4 }}>
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid size={5}>
+                  <Skeleton variant="text" width="80%" height={32} />
+                  <Skeleton variant="text" width="60%" />
+                  <Skeleton variant="text" width="70%" />
+                </Grid>
+                <Grid size={2} sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Skeleton variant="rounded" width={64} height={64} />
+                </Grid>
+                <Grid size={5}>
+                  <Skeleton variant="text" width="60%" height={32} sx={{ ml: 'auto' }} />
+                  <Skeleton variant="text" width="50%" sx={{ ml: 'auto' }} />
+                  <Skeleton variant="text" width="50%" sx={{ ml: 'auto' }} />
+                </Grid>
+              </Grid>
+              <Divider sx={{ mb: 2 }} />
+              <Skeleton variant="rounded" height={70} sx={{ mb: 3 }} />
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} variant="text" height={40} />
+              ))}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                <Skeleton variant="rounded" width={260} height={110} />
+              </Box>
+            </Paper>
+          </Box>
+        )}
 
         {!loading && (notFound || !factura || !factura.lote || !factura.cliente || !emisor) && (
           <Alert severity="error">No se encontró la factura.</Alert>

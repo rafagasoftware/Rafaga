@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useEffect, useMemo, useState } from 'react';
+import { TableSkeletonRows } from '../components/TableSkeletonRows';
 import { ClienteFormDialog, type ClienteFormValues } from './clientes/ClienteFormDialog';
 import { supabase } from '../lib/supabaseClient';
 import type { Cliente, Grupo } from '../types/domain';
@@ -244,6 +245,7 @@ export function ClientesPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
+                {loading && <TableSkeletonRows columns={6} />}
                 {!loading && clientesFiltrados.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6}>

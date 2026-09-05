@@ -6,6 +6,7 @@ import { alpha } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { FacturaDetalleModal } from '../components/FacturaDetalleModal';
+import { TableSkeletonRows } from '../components/TableSkeletonRows';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { supabase } from '../lib/supabaseClient';
 import { formatearMoneda } from './facturar/calculos';
@@ -132,6 +133,7 @@ export function InicioPage() {
               </TableRow>
             </TableHead>
             <TableBody>
+              {loading && <TableSkeletonRows columns={4} />}
               {ultimas.map((factura) => (
                 <TableRow key={factura.id} hover onClick={() => setSeleccionada(factura.id)} sx={{ cursor: 'pointer' }}>
                   <TableCell>{factura.cliente?.razon_social ?? '—'}</TableCell>
