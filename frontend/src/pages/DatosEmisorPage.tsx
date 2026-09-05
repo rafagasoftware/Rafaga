@@ -53,6 +53,8 @@ export function DatosEmisorPage() {
 
   const [certificado, setCertificado] = useState<EstadoCertificado | null>(null);
   const [dialogCertificadoAbierto, setDialogCertificadoAbierto] = useState(false);
+  const [probando, setProbando] = useState(false);
+  const [errorPrueba, setErrorPrueba] = useState<string | null>(null);
 
   const cargarCertificado = useCallback(async () => {
     if (!session) return;
@@ -93,6 +95,30 @@ export function DatosEmisorPage() {
         setLoading(false);
       });
   }, [session]);
+
+  async function handleProbarConexion() {
+    if (!session) return;
+
+    setProbando(true);
+    setErrorPrueba(null);
+
+    try {
+      const response = await fetch(`${backendUrl}/me/certificado/probar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrorPrueba(data.error ?? 'No se pudo probar la conexión.');
+      }
+    } catch {
+      setErrorPrueba('No se pudo conectar con el servidor.');
+    } finally {
+      setProbando(false);
+      cargarCertificado();
+    }
+  }
 
   function handleChange(field: keyof FormValues) {
     return (event: ChangeEvent<HTMLInputElement>) => {
@@ -241,14 +267,16 @@ export function DatosEmisorPage() {
             </Typography>
           )}
 
-          <Stack direction="row" spacing={2}>
+          <Stack direction="row" spacing={2} sx={{ mb: errorPrueba ? 2 : 0 }}>
             <Button variant="outlined" onClick={() => setDialogCertificadoAbierto(true)}>
               {certificado ? 'Actualizar certificado' : 'Configurar certificado'}
             </Button>
-            <Button variant="outlined" disabled>
-              Probar conexión
+            <Button variant="outlined" onClick={handleProbarConexion} disabled={!certificado || probando}>
+              {probando ? 'Probando…' : 'Probar conexión'}
             </Button>
           </Stack>
+
+          {errorPrueba && <Alert severity="error">{errorPrueba}</Alert>}
         </Paper>
       </Stack>
       )}

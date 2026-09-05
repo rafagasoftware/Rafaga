@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import type { Ambiente } from '../arca/wsaa';
+import { obtenerCredencialesWSAA } from '../arca/wsaa';
 import { requireAuth } from '../middleware/auth';
 import { supabase } from '../supabaseClient';
 
@@ -53,4 +55,45 @@ certificadoArcaRouter.post('/', requireAuth, async (req, res) => {
   }
 
   res.status(201).json({ ok: true });
+});
+
+// Pide un Ticket de Acceso a WSAA con el certificado guardado. No emite
+// nada — solo confirma que ARCA acepta la firma, y deja constancia del
+// resultado en certificados_arca para mostrarlo en pantalla.
+interface CertificadoLeido {
+  alias: string;
+  certificado_pem: string;
+  clave_privada_pem: string;
+  ambiente: Ambiente;
+}
+
+certificadoArcaRouter.post('/probar', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .rpc('leer_certificado_arca', { p_emisor_id: req.emisorId })
+    .maybeSingle<CertificadoLeido>();
+
+  if (error || !data || !data.certificado_pem || !data.clave_privada_pem) {
+    res.status(400).json({ error: 'Todavía no cargaste un certificado para esta cuenta.' });
+    return;
+  }
+
+  try {
+    await obtenerCredencialesWSAA(req.emisorId as string, data.certificado_pem, data.clave_privada_pem, data.ambiente);
+
+    await supabase
+      .from('certificados_arca')
+      .update({ estado_conexion: 'ok', ultima_verificacion: new Date().toISOString() })
+      .eq('emisor_id', req.emisorId);
+
+    res.json({ ok: true });
+  } catch (wsaaError) {
+    const motivo = wsaaError instanceof Error ? wsaaError.message : 'Error desconocido al conectar con ARCA.';
+
+    await supabase
+      .from('certificados_arca')
+      .update({ estado_conexion: 'error', ultima_verificacion: new Date().toISOString() })
+      .eq('emisor_id', req.emisorId);
+
+    res.status(502).json({ error: motivo });
+  }
 });
