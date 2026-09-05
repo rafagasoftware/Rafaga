@@ -36,7 +36,7 @@ export function InicioPage() {
         ¿Qué querés hacer?
       </Typography>
 
-      <Box sx={{ display: 'flex', gap: 3, mb: 5, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <Box sx={{ display: 'flex', gap: 3, mb: 5, flexWrap: 'wrap' }}>
         <Paper
           component={RouterLink}
           to="/facturar/simple"

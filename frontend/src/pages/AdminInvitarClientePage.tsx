@@ -65,7 +65,7 @@ export function AdminInvitarClientePage() {
         Le va a llegar un correo para que cree su contraseña y empiece a usar Rafaga.
       </Typography>
 
-      <Paper variant="outlined" sx={{ p: 4, maxWidth: 480, mx: 'auto' }}>
+      <Paper variant="outlined" sx={{ p: 4, maxWidth: 480 }}>
         <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField label="Correo electrónico" type="email" value={form.email} onChange={handleChange('email')} required fullWidth />
           <TextField label="CUIT" value={form.cuit} onChange={handleChange('cuit')} required fullWidth />

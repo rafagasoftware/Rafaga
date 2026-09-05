@@ -117,7 +117,7 @@ export function FacturaDetallePage() {
   const conceptoLabel = CONCEPTOS.find((c) => c.value === lote.concepto)?.label ?? '';
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+    <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }} className="no-imprimir">
         <Chip
           label={ESTADO_LABEL[factura.estado] ?? factura.estado}
@@ -152,7 +152,7 @@ export function FacturaDetallePage() {
         </Alert>
       )}
 
-      <Paper variant="outlined" sx={{ p: 4 }}>
+      <Paper variant="outlined" sx={{ p: 4, maxWidth: 800 }}>
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid size={5}>
             <Typography variant="h5">{emisor.razon_social}</Typography>
