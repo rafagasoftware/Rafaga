@@ -13,7 +13,7 @@ import { formatearMoneda } from './facturar/calculos';
 
 const tarjetaModoSx = {
   p: 3,
-  width: 280,
+  width: '100%',
   minHeight: 200,
   textDecoration: 'none',
   color: 'text.primary',
@@ -54,12 +54,13 @@ export function InicioPage() {
 
   return (
     <>
-      <Typography variant="h3" sx={{ mb: 3 }}>
+      <Typography variant="h5" sx={{ mb: 3 }}>
         ¿Qué querés hacer?
       </Typography>
 
-      <Box sx={{ display: 'flex', gap: 3, mb: 5, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 3, mb: 5 }}>
         <Paper component={RouterLink} to="/facturar/simple" variant="outlined" sx={tarjetaModoSx}>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
           <Box
             sx={{
               width: 44,
@@ -68,8 +69,7 @@ export function InicioPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-              mb: 2,
+              mb: 1,
             }}
           >
             <ReceiptLongOutlinedIcon sx={{ color: 'primary.main' }} />
@@ -77,6 +77,7 @@ export function InicioPage() {
           <Typography variant="h5" sx={{ mb: 1 }}>
             Factura simple
           </Typography>
+              </Box>
           <Typography color="text.secondary">Una factura para un solo cliente.</Typography>
           <Box sx={{ flexGrow: 1 }} />
           <Typography sx={{ color: 'primary.main', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5, mt: 2 }}>
@@ -85,6 +86,7 @@ export function InicioPage() {
         </Paper>
 
         <Paper component={RouterLink} to="/facturar/multiple" variant="outlined" sx={tarjetaModoSx}>
+        <Box sx={{display: 'flex', alignItems: 'center', gap: 2}}>
           <Box
             sx={{
               width: 44,
@@ -93,8 +95,7 @@ export function InicioPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-              mb: 2,
+              mb: 1,
             }}
           >
             <GroupsOutlinedIcon sx={{ color: 'primary.main' }} />
@@ -102,6 +103,7 @@ export function InicioPage() {
           <Typography variant="h5" sx={{ mb: 1 }}>
             Facturación múltiple
           </Typography>
+          </Box>
           <Typography color="text.secondary">
             Cargás los ítems una sola vez y salen varias facturas, una por cliente. Para cuotas, expensas o abonos.
           </Typography>

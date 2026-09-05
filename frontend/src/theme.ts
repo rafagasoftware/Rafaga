@@ -1,8 +1,10 @@
 import { createTheme } from '@mui/material/styles';
 
 // Paleta y tipografía definidas en proyecto.md: fondo claro, texto casi
-// negro, un único acento (azul acero), esquinas rectas, sin sombras
-// pesadas, tipografía condensada en títulos.
+// negro, un único acento (azul acero), sin sombras pesadas, tipografía
+// condensada en títulos. shape.borderRadius es la única fuente de verdad
+// para el redondeo de esquinas (Paper, Dialog, botones, campos) — no
+// pisarlo con un borderRadius suelto en un componente puntual.
 export const theme = createTheme({
   palette: {
     mode: 'light',
@@ -14,7 +16,7 @@ export const theme = createTheme({
     success: { main: '#3A7D5C' },
     warning: { main: '#9C6B22' },
   },
-  shape: { borderRadius: 2 },
+  shape: { borderRadius: 8 },
   typography: {
     fontFamily: "'Outfit', system-ui, sans-serif",
     h1: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 },
@@ -36,12 +38,6 @@ export const theme = createTheme({
       defaultProps: { elevation: 0 },
       styleOverrides: {
         root: { backgroundImage: 'none' },
-      },
-    },
-    MuiAppBar: {
-      defaultProps: { elevation: 0, color: 'default' },
-      styleOverrides: {
-        root: { borderBottom: '1px solid #D7DCE0' },
       },
     },
   },
