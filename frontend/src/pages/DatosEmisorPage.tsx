@@ -110,7 +110,7 @@ export function DatosEmisorPage() {
 
       {loadError && <Alert severity="error" sx={{ mb: 3 }}>{loadError}</Alert>}
 
-      <Stack spacing={3} sx={{ maxWidth: 520 }}>
+      <Stack spacing={3} sx={{ maxWidth: 520, mx: 'auto' }}>
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Perfil fiscal

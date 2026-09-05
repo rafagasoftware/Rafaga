@@ -20,7 +20,7 @@ export function Paso1DatosEmision({ valores, onChange, puntosVenta }: Props) {
   const incluyeServicios = valores.concepto === 'servicios' || valores.concepto === 'productos_servicios';
 
   return (
-    <Stack spacing={2.5} sx={{ maxWidth: 480 }}>
+    <Stack spacing={2.5} sx={{ maxWidth: 480, mx: 'auto' }}>
       <TextField
         select
         label="Punto de venta"

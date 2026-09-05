@@ -11,7 +11,7 @@ export function Paso2Simple({ clientes, clienteId, onChange }: Props) {
   const clienteSeleccionado = clientes.find((c) => c.id === clienteId) ?? null;
 
   return (
-    <Stack spacing={3} sx={{ maxWidth: 480 }}>
+    <Stack spacing={3} sx={{ maxWidth: 480, mx: 'auto' }}>
       <Autocomplete
         options={clientes}
         value={clienteSeleccionado}

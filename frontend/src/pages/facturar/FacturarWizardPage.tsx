@@ -165,7 +165,7 @@ export function FacturarWizardPage() {
 
   if (guardado) {
     return (
-      <Paper variant="outlined" sx={{ p: 4, maxWidth: 480 }}>
+      <Paper variant="outlined" sx={{ p: 4, maxWidth: 480, mx: 'auto' }}>
         <Typography variant="h4" sx={{ mb: 1.5 }}>
           Quedó guardado
         </Typography>
@@ -211,7 +211,7 @@ export function FacturarWizardPage() {
       </Stepper>
 
       {puntosVenta.length === 0 && paso === 1 && (
-        <Alert severity="warning" sx={{ mb: 3, maxWidth: 480 }}>
+        <Alert severity="warning" sx={{ mb: 3, maxWidth: 480, mx: 'auto' }}>
           Todavía no tenés ningún punto de venta habilitado. Cargá uno primero.
         </Alert>
       )}

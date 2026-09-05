@@ -31,7 +31,7 @@ export function Paso4Revisar({ estado, puntosVenta, clientes, onEditarPaso, onEm
   const puedeEmitir = cantidadFacturas > 0 && estado.paso1.puntoVentaId && estado.items.length > 0;
 
   return (
-    <Stack spacing={3} sx={{ maxWidth: 640 }}>
+    <Stack spacing={3} sx={{ maxWidth: 640, mx: 'auto' }}>
       <Paper variant="outlined" sx={{ p: 3, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
         <Typography variant="h4" sx={{ mb: 0.5 }}>
           {cantidadFacturas === 1
