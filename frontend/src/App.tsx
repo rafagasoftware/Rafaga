@@ -3,6 +3,7 @@ import { AdminRoute, ProtectedRoute } from './auth/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AceptarInvitacionPage } from './pages/AceptarInvitacionPage';
 import { AdminInvitarClientePage } from './pages/AdminInvitarClientePage';
+import { ClientesPage } from './pages/ClientesPage';
 import { InicioPage } from './pages/InicioPage';
 import { LoginPage } from './pages/LoginPage';
 
@@ -15,6 +16,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/" element={<InicioPage />} />
+          <Route path="/clientes" element={<ClientesPage />} />
 
           <Route element={<AdminRoute />}>
             <Route path="/admin/invitar" element={<AdminInvitarClientePage />} />

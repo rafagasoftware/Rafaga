@@ -1,13 +1,7 @@
 import { Alert, Box, Button, MenuItem, Paper, TextField, Typography } from '@mui/material';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
-
-const CONDICIONES_IVA = [
-  'Responsable Inscripto',
-  'Monotributista',
-  'Exento',
-  'Consumidor Final',
-];
+import { CONDICIONES_IVA } from '../constants/fiscal';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 

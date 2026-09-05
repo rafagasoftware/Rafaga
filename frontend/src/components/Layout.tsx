@@ -10,9 +10,13 @@ export function Layout() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static">
         <Toolbar sx={{ gap: 3 }}>
-          <Typography variant="h5" component={RouterLink} to="/" sx={{ color: 'text.primary', textDecoration: 'none', flexGrow: 1 }}>
+          <Typography variant="h5" component={RouterLink} to="/" sx={{ color: 'text.primary', textDecoration: 'none' }}>
             Rafaga
           </Typography>
+          <Button component={RouterLink} to="/clientes" color="inherit">
+            Clientes
+          </Button>
+          <Box sx={{ flexGrow: 1 }} />
           {isAdmin && (
             <Button component={RouterLink} to="/admin/invitar" color="inherit">
               Invitar cliente
@@ -23,7 +27,7 @@ export function Layout() {
           </Button>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="md" sx={{ py: 5 }}>
+      <Container maxWidth="lg" sx={{ py: 5 }}>
         <Outlet />
       </Container>
     </Box>
