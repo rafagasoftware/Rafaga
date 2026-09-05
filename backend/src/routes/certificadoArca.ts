@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { Ambiente } from '../arca/wsaa';
 import { obtenerCredencialesWSAA } from '../arca/wsaa';
+import { consultarPuntosVenta } from '../arca/wsfe';
 import { requireAuth } from '../middleware/auth';
 import { supabase } from '../supabaseClient';
 
@@ -78,14 +79,17 @@ certificadoArcaRouter.post('/probar', requireAuth, async (req, res) => {
   }
 
   try {
-    await obtenerCredencialesWSAA(req.emisorId as string, data.certificado_pem, data.clave_privada_pem, data.ambiente);
+    const credenciales = await obtenerCredencialesWSAA(req.emisorId as string, data.certificado_pem, data.clave_privada_pem, data.ambiente);
+
+    const { data: emisor } = await supabase.from('emisores').select('cuit').eq('id', req.emisorId).single();
+    const puntosVenta = emisor ? await consultarPuntosVenta(credenciales, emisor.cuit, data.ambiente) : [];
 
     await supabase
       .from('certificados_arca')
       .update({ estado_conexion: 'ok', ultima_verificacion: new Date().toISOString() })
       .eq('emisor_id', req.emisorId);
 
-    res.json({ ok: true });
+    res.json({ ok: true, puntosVenta });
   } catch (wsaaError) {
     const motivo = wsaaError instanceof Error ? wsaaError.message : 'Error desconocido al conectar con ARCA.';
 

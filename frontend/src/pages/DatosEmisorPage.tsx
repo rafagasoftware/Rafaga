@@ -55,6 +55,7 @@ export function DatosEmisorPage() {
   const [dialogCertificadoAbierto, setDialogCertificadoAbierto] = useState(false);
   const [probando, setProbando] = useState(false);
   const [errorPrueba, setErrorPrueba] = useState<string | null>(null);
+  const [puntosVentaArca, setPuntosVentaArca] = useState<{ numero: number; bloqueado: boolean }[] | null>(null);
 
   const cargarCertificado = useCallback(async () => {
     if (!session) return;
@@ -101,6 +102,7 @@ export function DatosEmisorPage() {
 
     setProbando(true);
     setErrorPrueba(null);
+    setPuntosVentaArca(null);
 
     try {
       const response = await fetch(`${backendUrl}/me/certificado/probar`, {
@@ -111,6 +113,8 @@ export function DatosEmisorPage() {
 
       if (!response.ok) {
         setErrorPrueba(data.error ?? 'No se pudo probar la conexión.');
+      } else {
+        setPuntosVentaArca(data.puntosVenta ?? []);
       }
     } catch {
       setErrorPrueba('No se pudo conectar con el servidor.');
@@ -277,6 +281,16 @@ export function DatosEmisorPage() {
           </Stack>
 
           {errorPrueba && <Alert severity="error">{errorPrueba}</Alert>}
+
+          {puntosVentaArca && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              {puntosVentaArca.length === 0
+                ? 'Conectado. ARCA no tiene ningún punto de venta habilitado para este CUIT todavía.'
+                : `Conectado. ARCA tiene habilitados estos puntos de venta: ${puntosVentaArca
+                    .map((p) => String(p.numero).padStart(4, '0') + (p.bloqueado ? ' (bloqueado)' : ''))
+                    .join(', ')}.`}
+            </Alert>
+          )}
         </Paper>
       </Stack>
       )}
