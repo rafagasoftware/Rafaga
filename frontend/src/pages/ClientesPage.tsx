@@ -7,9 +7,6 @@ import {
   Chip,
   IconButton,
   InputAdornment,
-  List,
-  ListItemButton,
-  ListItemText,
   Paper,
   Table,
   TableBody,
@@ -174,115 +171,111 @@ export function ClientesPage() {
 
       {loadError && <Alert severity="error" sx={{ mb: 2 }}>{loadError}</Alert>}
 
-      <Box sx={{ display: 'flex', gap: 3 }}>
-        <Paper variant="outlined" sx={{ width: 220, flexShrink: 0, p: 2 }}>
-          <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-            Grupos
-          </Typography>
-          <List dense disablePadding>
-            <ListItemButton
-              selected={grupoSeleccionado === null}
-              onClick={() => setGrupoSeleccionado(null)}
-              sx={{ borderRadius: 1 }}
-            >
-              <ListItemText primary="Todos" />
-            </ListItemButton>
-            {grupos.map((grupo) => (
-              <ListItemButton
-                key={grupo.id}
-                selected={grupoSeleccionado === grupo.id}
-                onClick={() => setGrupoSeleccionado(grupo.id)}
-                sx={{ borderRadius: 1 }}
-              >
-                <ListItemText primary={grupo.nombre} />
-              </ListItemButton>
-            ))}
-          </List>
+      <TextField
+        placeholder="Buscar por nombre o documento"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
 
-          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-            <TextField
-              size="small"
-              placeholder="Grupo nuevo"
-              value={nuevoGrupo}
-              onChange={(e) => setNuevoGrupo(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAgregarGrupo()}
-              fullWidth
-            />
-            <IconButton onClick={handleAgregarGrupo} aria-label="Agregar grupo" color="primary">
-              <AddIcon />
-            </IconButton>
-          </Box>
-        </Paper>
-
-        <Box sx={{ flexGrow: 1 }}>
-          <TextField
-            placeholder="Buscar por nombre o documento"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            fullWidth
-            sx={{ mb: 2 }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              },
-            }}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 3 }}>
+        <Chip
+          label="Todos"
+          clickable
+          color={grupoSeleccionado === null ? 'primary' : 'default'}
+          variant={grupoSeleccionado === null ? 'filled' : 'outlined'}
+          onClick={() => setGrupoSeleccionado(null)}
+        />
+        {grupos.map((grupo) => (
+          <Chip
+            key={grupo.id}
+            label={grupo.nombre}
+            clickable
+            color={grupoSeleccionado === grupo.id ? 'primary' : 'default'}
+            variant={grupoSeleccionado === grupo.id ? 'filled' : 'outlined'}
+            onClick={() => setGrupoSeleccionado(grupo.id)}
           />
-
-          <Paper variant="outlined">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Razón social</TableCell>
-                  <TableCell>Documento</TableCell>
-                  <TableCell>Condición IVA</TableCell>
-                  <TableCell>Correo</TableCell>
-                  <TableCell>Grupos</TableCell>
-                  <TableCell align="right" />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading && <TableSkeletonRows columns={6} />}
-                {!loading && clientesFiltrados.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6}>
-                      <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                        {clientes.length === 0 ? 'Todavía no cargaste ningún cliente.' : 'No hay clientes que coincidan con la búsqueda.'}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-                {clientesFiltrados.map((cliente) => (
-                  <TableRow key={cliente.id} hover>
-                    <TableCell>{cliente.razon_social}</TableCell>
-                    <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {cliente.tipo_documento} {cliente.numero_documento}
-                    </TableCell>
-                    <TableCell>{cliente.condicion_iva}</TableCell>
-                    <TableCell>{cliente.email || '—'}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {(clienteGrupos[cliente.id] ?? []).map((grupoId) => {
-                          const grupo = grupos.find((g) => g.id === grupoId);
-                          return grupo ? <Chip key={grupoId} label={grupo.nombre} size="small" /> : null;
-                        })}
-                      </Box>
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton aria-label="Editar cliente" onClick={() => abrirEdicion(cliente)}>
-                        <EditOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
-        </Box>
+        ))}
+        <TextField
+          size="small"
+          placeholder="Grupo nuevo"
+          value={nuevoGrupo}
+          onChange={(e) => setNuevoGrupo(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAgregarGrupo()}
+          sx={{ width: 160 }}
+          slotProps={{
+            input: {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={handleAgregarGrupo} aria-label="Agregar grupo" color="primary">
+                    <AddIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
       </Box>
+
+      <Paper variant="outlined">
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Razón social</TableCell>
+              <TableCell>Documento</TableCell>
+              <TableCell>Condición IVA</TableCell>
+              <TableCell>Correo</TableCell>
+              <TableCell>Grupos</TableCell>
+              <TableCell align="right" />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading && <TableSkeletonRows columns={6} />}
+            {!loading && clientesFiltrados.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6}>
+                  <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                    {clientes.length === 0 ? 'Todavía no cargaste ningún cliente.' : 'No hay clientes que coincidan con la búsqueda.'}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+            {clientesFiltrados.map((cliente) => (
+              <TableRow key={cliente.id} hover>
+                <TableCell>{cliente.razon_social}</TableCell>
+                <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {cliente.tipo_documento} {cliente.numero_documento}
+                </TableCell>
+                <TableCell>{cliente.condicion_iva}</TableCell>
+                <TableCell>{cliente.email || '—'}</TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {(clienteGrupos[cliente.id] ?? []).map((grupoId) => {
+                      const grupo = grupos.find((g) => g.id === grupoId);
+                      return grupo ? <Chip key={grupoId} label={grupo.nombre} size="small" /> : null;
+                    })}
+                  </Box>
+                </TableCell>
+                <TableCell align="right">
+                  <IconButton aria-label="Editar cliente" onClick={() => abrirEdicion(cliente)}>
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Paper>
 
       <ClienteFormDialog
         open={dialogAbierto}
