@@ -16,7 +16,7 @@ export const theme = createTheme({
   },
   shape: { borderRadius: 2 },
   typography: {
-    fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+    fontFamily: "'Barlow', system-ui, sans-serif",
     h1: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 },
     h2: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 },
     h3: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 },
