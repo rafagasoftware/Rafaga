@@ -1,6 +1,7 @@
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import LabelOutlinedIcon from '@mui/icons-material/LabelOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
@@ -34,6 +35,7 @@ interface NavItem {
 const NAV_PRINCIPAL: NavItem[] = [
   { label: 'Inicio', to: '/', icon: <HomeOutlinedIcon fontSize="small" /> },
   { label: 'Clientes', to: '/clientes', icon: <PeopleAltOutlinedIcon fontSize="small" /> },
+  { label: 'Grupos', to: '/grupos', icon: <LabelOutlinedIcon fontSize="small" /> },
   { label: 'Facturas', to: '/facturas', icon: <ReceiptLongOutlinedIcon fontSize="small" /> },
 ];
 

@@ -38,8 +38,6 @@ export function ClientesPage() {
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
-  const [nuevoGrupo, setNuevoGrupo] = useState('');
-
   async function cargarTodo() {
     setLoading(true);
     setLoadError(null);
@@ -144,17 +142,6 @@ export function ClientesPage() {
     cargarTodo();
   }
 
-  async function handleAgregarGrupo() {
-    const nombre = nuevoGrupo.trim();
-    if (!nombre) return;
-
-    const { error } = await supabase.from('grupos').insert({ nombre });
-    if (!error) {
-      setNuevoGrupo('');
-      cargarTodo();
-    }
-  }
-
   return (
     <>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
@@ -162,7 +149,7 @@ export function ClientesPage() {
           <Typography variant="h3" sx={{ mb: 1 }}>
             Libreta de clientes
           </Typography>
-          <Typography color="text.secondary">Los grupos que armes acá son los que después elegís para facturar a varios clientes juntos.</Typography>
+          <Typography color="text.secondary">Filtrá por grupo para encontrarlos más rápido — los grupos se crean y editan desde Grupos.</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNuevo} size="large">
           Nuevo cliente
@@ -206,25 +193,6 @@ export function ClientesPage() {
             onClick={() => setGrupoSeleccionado(grupo.id)}
           />
         ))}
-        <TextField
-          size="small"
-          placeholder="Grupo nuevo"
-          value={nuevoGrupo}
-          onChange={(e) => setNuevoGrupo(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAgregarGrupo()}
-          sx={{ width: 160 }}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={handleAgregarGrupo} aria-label="Agregar grupo" color="primary">
-                    <AddIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
       </Box>
 
       <Paper variant="outlined">
