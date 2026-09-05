@@ -13,3 +13,17 @@ export interface Grupo {
   id: string;
   nombre: string;
 }
+
+export interface CatalogoItem {
+  id: string;
+  codigo: number;
+  descripcion: string;
+  unidad_medida: string | null;
+}
+
+export interface PuntoVenta {
+  id: string;
+  numero: number;
+  descripcion: string | null;
+  habilitado: boolean;
+}

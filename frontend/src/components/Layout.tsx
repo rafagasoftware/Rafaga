@@ -16,6 +16,12 @@ export function Layout() {
           <Button component={RouterLink} to="/clientes" color="inherit">
             Clientes
           </Button>
+          <Button component={RouterLink} to="/catalogo" color="inherit">
+            Catálogo
+          </Button>
+          <Button component={RouterLink} to="/puntos-venta" color="inherit">
+            Puntos de venta
+          </Button>
           <Box sx={{ flexGrow: 1 }} />
           {isAdmin && (
             <Button component={RouterLink} to="/admin/invitar" color="inherit">

@@ -3,9 +3,11 @@ import { AdminRoute, ProtectedRoute } from './auth/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AceptarInvitacionPage } from './pages/AceptarInvitacionPage';
 import { AdminInvitarClientePage } from './pages/AdminInvitarClientePage';
+import { CatalogoPage } from './pages/CatalogoPage';
 import { ClientesPage } from './pages/ClientesPage';
 import { InicioPage } from './pages/InicioPage';
 import { LoginPage } from './pages/LoginPage';
+import { PuntosVentaPage } from './pages/PuntosVentaPage';
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<InicioPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
+          <Route path="/catalogo" element={<CatalogoPage />} />
+          <Route path="/puntos-venta" element={<PuntosVentaPage />} />
 
           <Route element={<AdminRoute />}>
             <Route path="/admin/invitar" element={<AdminInvitarClientePage />} />
