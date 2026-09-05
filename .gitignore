@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Esquema de base de datos (contiene detalles de la estructura interna)
+supabase/schema.sql
