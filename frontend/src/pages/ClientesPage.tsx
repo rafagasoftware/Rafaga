@@ -1,5 +1,6 @@
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import {
   Alert,
   Box,
@@ -20,6 +21,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useEffect, useMemo, useState } from 'react';
 import { TableSkeletonRows } from '../components/TableSkeletonRows';
 import { ClienteFormDialog, type ClienteFormValues } from './clientes/ClienteFormDialog';
+import { ImportarClientesDialog } from './clientes/ImportarClientesDialog';
 import { supabase } from '../lib/supabaseClient';
 import type { Cliente, Grupo } from '../types/domain';
 
@@ -37,6 +39,8 @@ export function ClientesPage() {
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+
+  const [importarAbierto, setImportarAbierto] = useState(false);
 
   async function cargarTodo() {
     setLoading(true);
@@ -151,9 +155,14 @@ export function ClientesPage() {
           </Typography>
           <Typography color="text.secondary">Filtrá por grupo para encontrarlos más rápido — los grupos se crean y editan desde Grupos.</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNuevo} size="large">
-          Nuevo cliente
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button variant="outlined" startIcon={<UploadFileOutlinedIcon />} onClick={() => setImportarAbierto(true)} size="large">
+            Importar desde Excel
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNuevo} size="large">
+            Nuevo cliente
+          </Button>
+        </Box>
       </Box>
 
       {loadError && <Alert severity="error" sx={{ mb: 2 }}>{loadError}</Alert>}
@@ -254,6 +263,13 @@ export function ClientesPage() {
         error={errorGuardado}
         onClose={() => setDialogAbierto(false)}
         onSave={handleGuardar}
+      />
+
+      <ImportarClientesDialog
+        open={importarAbierto}
+        gruposExistentes={grupos}
+        onClose={() => setImportarAbierto(false)}
+        onImportado={cargarTodo}
       />
     </>
   );
