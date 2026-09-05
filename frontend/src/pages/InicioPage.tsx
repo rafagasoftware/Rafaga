@@ -4,7 +4,8 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import { Box, Chip, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
+import { FacturaDetalleModal } from '../components/FacturaDetalleModal';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { supabase } from '../lib/supabaseClient';
 import { formatearMoneda } from './facturar/calculos';
@@ -34,9 +35,9 @@ interface EmisionReciente {
 }
 
 export function InicioPage() {
-  const navigate = useNavigate();
   const [ultimas, setUltimas] = useState<EmisionReciente[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seleccionada, setSeleccionada] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -132,7 +133,7 @@ export function InicioPage() {
             </TableHead>
             <TableBody>
               {ultimas.map((factura) => (
-                <TableRow key={factura.id} hover onClick={() => navigate(`/facturas/${factura.id}`)} sx={{ cursor: 'pointer' }}>
+                <TableRow key={factura.id} hover onClick={() => setSeleccionada(factura.id)} sx={{ cursor: 'pointer' }}>
                   <TableCell>{factura.cliente?.razon_social ?? '—'}</TableCell>
                   <TableCell>{new Date(factura.creado_en).toLocaleDateString('es-AR')}</TableCell>
                   <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -147,6 +148,8 @@ export function InicioPage() {
           </Table>
         </Paper>
       )}
+
+      <FacturaDetalleModal facturaId={seleccionada} onClose={() => setSeleccionada(null)} />
     </>
   );
 }

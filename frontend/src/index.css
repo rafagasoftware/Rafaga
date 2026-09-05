@@ -5,7 +5,19 @@ body {
 }
 
 @media print {
-  .MuiAppBar-root,
+  body * {
+    visibility: hidden;
+  }
+  .rafaga-imprimible,
+  .rafaga-imprimible * {
+    visibility: visible;
+  }
+  .rafaga-imprimible {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
   .no-imprimir {
     display: none !important;
   }

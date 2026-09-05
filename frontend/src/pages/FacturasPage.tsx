@@ -14,7 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { FacturaDetalleModal } from '../components/FacturaDetalleModal';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { TIPOS_COMPROBANTE } from '../constants/facturacion';
 import { supabase } from '../lib/supabaseClient';
@@ -31,9 +31,9 @@ interface FilaFactura {
 }
 
 export function FacturasPage() {
-  const navigate = useNavigate();
   const [facturas, setFacturas] = useState<FilaFactura[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seleccionada, setSeleccionada] = useState<string | null>(null);
 
   const [busqueda, setBusqueda] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('');
@@ -143,7 +143,7 @@ export function FacturasPage() {
               </TableRow>
             )}
             {filtradas.map((factura) => (
-              <TableRow key={factura.id} hover onClick={() => navigate(`/facturas/${factura.id}`)} sx={{ cursor: 'pointer' }}>
+              <TableRow key={factura.id} hover onClick={() => setSeleccionada(factura.id)} sx={{ cursor: 'pointer' }}>
                 <TableCell>{factura.lote ? new Date(factura.lote.fecha_emision).toLocaleDateString('es-AR') : '—'}</TableCell>
                 <TableCell>
                   {TIPOS_COMPROBANTE.find((t) => t.value === factura.lote?.tipo_comprobante)?.label ?? '—'}
@@ -165,6 +165,8 @@ export function FacturasPage() {
           </TableBody>
         </Table>
       </Paper>
+
+      <FacturaDetalleModal facturaId={seleccionada} onClose={() => setSeleccionada(null)} />
     </>
   );
 }
