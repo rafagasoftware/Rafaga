@@ -152,7 +152,7 @@ export function GruposPage() {
                 </TableCell>
               </TableRow>
             )}
-            {filas.map((grupo) => (
+            {!loading && filas.map((grupo) => (
               <TableRow key={grupo.id} hover>
                 <TableCell>{grupo.nombre}</TableCell>
                 <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{grupo.clientes_grupos[0]?.count ?? 0}</TableCell>

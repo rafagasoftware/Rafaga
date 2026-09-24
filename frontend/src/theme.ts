@@ -40,5 +40,16 @@ export const theme = createTheme({
         root: { backgroundImage: 'none' },
       },
     },
+    MuiTableHead: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#2F5F7C',
+          '& .MuiTableCell-root': {
+            color: '#FFFFFF',
+            fontWeight: 600,
+          },
+        },
+      },
+    },
   },
 });

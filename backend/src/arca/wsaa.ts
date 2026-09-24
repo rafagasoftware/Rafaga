@@ -1,4 +1,5 @@
 import forge from 'node-forge';
+import { supabase } from '../supabaseClient';
 
 export type Ambiente = 'homologacion' | 'produccion';
 
@@ -12,11 +13,6 @@ export interface Credenciales {
   sign: string;
   expiracion: Date;
 }
-
-// Un Ticket de Acceso (TA) es válido ~12hs y ARCA espera que no lo
-// pidamos de nuevo antes de que venza. Cache en memoria del proceso:
-// alcanza para esta escala (un solo backend, sin múltiples instancias).
-const cache = new Map<string, Credenciales>();
 
 function construirTRA(servicio: string): string {
   const ahora = Date.now();
@@ -117,8 +113,15 @@ function extraerCredenciales(respuestaSoap: string): Credenciales {
   return { token, sign, expiracion: new Date(expirationTime) };
 }
 
-// Devuelve token+sign vigentes para (emisor, servicio, ambiente),
-// reusando el cache si todavía le quedan más de 5 minutos de vida.
+// Devuelve token+sign vigentes para (emisor, servicio), reusando el TA
+// cacheado en certificados_arca_tokens si todavía le quedan más de 5
+// minutos de vida. El cache vive en la base (no en memoria del proceso)
+// porque ARCA rechaza un pedido de TA nuevo mientras el anterior siga
+// vigente (~12hs) — un cache en memoria se pierde en cada reinicio del
+// backend y termina pidiendo un TA de más, que ARCA rechaza con
+// "ns1:coe.alreadyAuthenticated". Un TA es válido para un solo servicio
+// (wsfe, ws_sr_constancia_inscripcion, etc.), de ahí que el cache esté
+// separado por servicio y no sea un único token por emisor.
 export async function obtenerCredencialesWSAA(
   emisorId: string,
   certificadoPem: string,
@@ -126,10 +129,18 @@ export async function obtenerCredencialesWSAA(
   ambiente: Ambiente,
   servicio = 'wsfe',
 ): Promise<Credenciales> {
-  const claveCache = `${emisorId}:${servicio}:${ambiente}`;
-  const enCache = cache.get(claveCache);
-  if (enCache && enCache.expiracion.getTime() - Date.now() > 5 * 60_000) {
-    return enCache;
+  const { data: fila } = await supabase
+    .from('certificados_arca_tokens')
+    .select('token, sign, expira')
+    .eq('emisor_id', emisorId)
+    .eq('servicio', servicio)
+    .maybeSingle();
+
+  if (fila) {
+    const expiracion = new Date(fila.expira);
+    if (expiracion.getTime() - Date.now() > 5 * 60_000) {
+      return { token: fila.token, sign: fila.sign, expiracion };
+    }
   }
 
   const tra = construirTRA(servicio);
@@ -137,6 +148,12 @@ export async function obtenerCredencialesWSAA(
   const respuestaSoap = await llamarLoginCms(cms, WSAA_URLS[ambiente]);
   const credenciales = extraerCredenciales(respuestaSoap);
 
-  cache.set(claveCache, credenciales);
+  await supabase
+    .from('certificados_arca_tokens')
+    .upsert(
+      { emisor_id: emisorId, servicio, token: credenciales.token, sign: credenciales.sign, expira: credenciales.expiracion.toISOString() },
+      { onConflict: 'emisor_id,servicio' },
+    );
+
   return credenciales;
 }

@@ -148,7 +148,7 @@ export function CatalogoPage() {
                 </TableCell>
               </TableRow>
             )}
-            {filas.map((item) => (
+            {!loading && filas.map((item) => (
               <TableRow key={item.id} hover>
                 <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{String(item.codigo).padStart(4, '0')}</TableCell>
                 <TableCell>{item.descripcion}</TableCell>

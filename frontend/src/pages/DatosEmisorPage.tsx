@@ -2,7 +2,9 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
+  FormControlLabel,
   MenuItem,
   Paper,
   Skeleton,
@@ -32,6 +34,7 @@ interface FormValues {
   ingresos_brutos: string;
   inicio_actividades: string;
   domicilio: string;
+  alcanzado_rg_3368: boolean;
 }
 
 export function DatosEmisorPage() {
@@ -43,6 +46,7 @@ export function DatosEmisorPage() {
     ingresos_brutos: '',
     inicio_actividades: '',
     domicilio: '',
+    alcanzado_rg_3368: false,
   });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -56,6 +60,11 @@ export function DatosEmisorPage() {
   const [probando, setProbando] = useState(false);
   const [errorPrueba, setErrorPrueba] = useState<string | null>(null);
   const [puntosVentaArca, setPuntosVentaArca] = useState<{ numero: number; bloqueado: boolean }[] | null>(null);
+  const [condicionIvaArca, setCondicionIvaArca] = useState<string | null>(null);
+  // TODO temporal: solo para ver en pantalla qué devuelve el padrón de
+  // ARCA mientras se depura esa consulta. Sacar junto con padronDebug del
+  // backend una vez confirmado que anda.
+  const [padronDebug, setPadronDebug] = useState<string | null>(null);
 
   const cargarCertificado = useCallback(async () => {
     if (!session) return;
@@ -91,7 +100,9 @@ export function DatosEmisorPage() {
             ingresos_brutos: data.ingresos_brutos ?? '',
             inicio_actividades: data.inicio_actividades ?? '',
             domicilio: data.domicilio ?? '',
+            alcanzado_rg_3368: data.alcanzado_rg_3368 ?? false,
           });
+          setCondicionIvaArca(data.condicion_iva_arca ?? null);
         }
         setLoading(false);
       });
@@ -111,6 +122,11 @@ export function DatosEmisorPage() {
       });
       const data = await response.json();
 
+      // condicionIvaArca puede venir incluso si el resto de la prueba
+      // falló (son dos consultas independientes del lado del backend).
+      if (data.condicionIvaArca) setCondicionIvaArca(data.condicionIvaArca);
+      setPadronDebug(data.padronDebug ?? null);
+
       if (!response.ok) {
         setErrorPrueba(data.error ?? 'No se pudo probar la conexión.');
       } else {
@@ -124,11 +140,16 @@ export function DatosEmisorPage() {
     }
   }
 
-  function handleChange(field: keyof FormValues) {
+  function handleChange(field: keyof Omit<FormValues, 'alcanzado_rg_3368'>) {
     return (event: ChangeEvent<HTMLInputElement>) => {
       setValores((prev) => ({ ...prev, [field]: event.target.value }));
       setGuardadoOk(false);
     };
+  }
+
+  function handleChangeAlcanzadoRg3368(event: ChangeEvent<HTMLInputElement>) {
+    setValores((prev) => ({ ...prev, alcanzado_rg_3368: event.target.checked }));
+    setGuardadoOk(false);
   }
 
   async function handleGuardar() {
@@ -145,6 +166,7 @@ export function DatosEmisorPage() {
         ingresos_brutos: valores.ingresos_brutos || null,
         inicio_actividades: valores.inicio_actividades || null,
         domicilio: valores.domicilio || null,
+        alcanzado_rg_3368: valores.alcanzado_rg_3368,
       })
       .eq('id', session.user.id);
 
@@ -206,6 +228,19 @@ export function DatosEmisorPage() {
                 </MenuItem>
               ))}
             </TextField>
+
+            {condicionIvaArca &&
+              (condicionIvaArca === valores.condicion_iva ? (
+                <Alert severity="success" variant="outlined">
+                  Coincide con lo que ARCA tiene registrado.
+                </Alert>
+              ) : (
+                <Alert severity="warning" variant="outlined">
+                  ARCA tiene registrado "{condicionIvaArca}", no "{valores.condicion_iva}". Esto puede hacer que ARCA rechace facturas —
+                  te conviene corregirlo acá para que coincida.
+                </Alert>
+              ))}
+
             <TextField
               label="Ingresos brutos"
               value={valores.ingresos_brutos}
@@ -221,6 +256,17 @@ export function DatosEmisorPage() {
               slotProps={{ inputLabel: { shrink: true } }}
             />
             <TextField label="Domicilio" value={valores.domicilio} onChange={handleChange('domicilio')} fullWidth />
+
+            <FormControlLabel
+              control={<Checkbox checked={valores.alcanzado_rg_3368} onChange={handleChangeAlcanzadoRg3368} />}
+              label="Establecimiento de educación de gestión privada (RG 3.368)"
+            />
+            {valores.alcanzado_rg_3368 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: -1.5 }}>
+                Cada factura va a incluir el dato adicional que exige ARCA para esta actividad (el mismo tipo y número de documento del
+                cliente, repetidos como lo pide la RG 3.368).
+              </Typography>
+            )}
 
             {errorGuardado && <Alert severity="error">{errorGuardado}</Alert>}
             {guardadoOk && <Alert severity="success">Se guardaron los cambios.</Alert>}
@@ -290,6 +336,21 @@ export function DatosEmisorPage() {
                     .map((p) => String(p.numero).padStart(4, '0') + (p.bloqueado ? ' (bloqueado)' : ''))
                     .join(', ')}.`}
             </Alert>
+          )}
+
+          {padronDebug && (
+            <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'background.default' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Respuesta del padrón de ARCA (temporal, solo para revisar)
+              </Typography>
+              <Typography
+                component="pre"
+                variant="body2"
+                sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: 12, m: 0 }}
+              >
+                {padronDebug}
+              </Typography>
+            </Paper>
           )}
         </Paper>
       </Stack>

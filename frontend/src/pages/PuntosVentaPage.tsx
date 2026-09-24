@@ -128,7 +128,7 @@ export function PuntosVentaPage() {
                 </TableCell>
               </TableRow>
             )}
-            {filas.map((punto) => (
+            {!loading && filas.map((punto) => (
               <TableRow key={punto.id} hover>
                 <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{String(punto.numero).padStart(4, '0')}</TableCell>
                 <TableCell>{punto.descripcion || '—'}</TableCell>

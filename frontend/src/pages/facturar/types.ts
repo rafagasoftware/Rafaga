@@ -6,7 +6,8 @@ export interface Paso1Valores {
   periodoDesde: string;
   periodoHasta: string;
   vencimientoPago: string;
-  condicionVenta: string;
+  condicionesVenta: string[];
+  actividadId: number | null;
 }
 
 export interface ItemFactura {
@@ -38,7 +39,8 @@ export const PASO1_INICIAL: Paso1Valores = {
   periodoDesde: '',
   periodoHasta: '',
   vencimientoPago: '',
-  condicionVenta: '',
+  condicionesVenta: [],
+  actividadId: null,
 };
 
 export function crearItemVacio(): ItemFactura {

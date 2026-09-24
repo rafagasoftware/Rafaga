@@ -1,5 +1,5 @@
 import { Alert, Box, Button, Chip, Divider, Paper, Stack, Typography } from '@mui/material';
-import { CONCEPTOS, TIPOS_COMPROBANTE } from '../../constants/facturacion';
+import { CONCEPTOS, esComprobanteSinIva, TIPOS_COMPROBANTE } from '../../constants/facturacion';
 import type { Cliente, PuntoVenta } from '../../types/domain';
 import { calcularTotales, formatearMoneda } from './calculos';
 import type { WizardState } from './types';
@@ -7,24 +7,22 @@ import type { WizardState } from './types';
 interface Props {
   estado: WizardState;
   puntosVenta: PuntoVenta[];
-  clientes: Cliente[];
+  clientesCache: Record<string, Cliente>;
   onEditarPaso: (paso: number) => void;
   onEmitir: () => void;
   emitiendo: boolean;
   error: string | null;
 }
 
-export function Paso4Revisar({ estado, puntosVenta, clientes, onEditarPaso, onEmitir, emitiendo, error }: Props) {
+export function Paso4Revisar({ estado, puntosVenta, clientesCache, onEditarPaso, onEmitir, emitiendo, error }: Props) {
   const puntoVenta = puntosVenta.find((p) => p.id === estado.paso1.puntoVentaId);
   const tipoLabel = TIPOS_COMPROBANTE.find((t) => t.value === estado.paso1.tipoComprobante)?.label ?? '';
   const conceptoLabel = CONCEPTOS.find((c) => c.value === estado.paso1.concepto)?.label ?? '';
 
-  const clientesElegidos =
-    estado.modo === 'simple'
-      ? clientes.filter((c) => c.id === estado.clienteId)
-      : clientes.filter((c) => estado.clienteIds.includes(c.id));
+  const idsElegidos = estado.modo === 'simple' ? (estado.clienteId ? [estado.clienteId] : []) : estado.clienteIds;
+  const clientesElegidos = idsElegidos.map((id) => clientesCache[id]).filter((c): c is Cliente => Boolean(c));
 
-  const totalPorFactura = calcularTotales(estado.items).total;
+  const totalPorFactura = calcularTotales(estado.items, esComprobanteSinIva(estado.paso1.tipoComprobante)).total;
   const cantidadFacturas = clientesElegidos.length;
   const totalLote = totalPorFactura * cantidadFacturas;
 
@@ -55,7 +53,8 @@ export function Paso4Revisar({ estado, puntosVenta, clientes, onEditarPaso, onEm
             {puntoVenta ? `Punto de venta ${String(puntoVenta.numero).padStart(4, '0')}` : 'Sin punto de venta'} · {tipoLabel}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {conceptoLabel} · Emisión {estado.paso1.fechaEmision} · {estado.paso1.condicionVenta || 'Sin condición de venta'}
+            {conceptoLabel} · Emisión {estado.paso1.fechaEmision} ·{' '}
+            {estado.paso1.condicionesVenta.length > 0 ? estado.paso1.condicionesVenta.join(', ') : 'Sin condición de venta'}
           </Typography>
           {estado.paso1.periodoDesde && (
             <Typography variant="body2" color="text.secondary">
@@ -112,7 +111,7 @@ export function Paso4Revisar({ estado, puntosVenta, clientes, onEditarPaso, onEm
 
       <Box>
         <Button variant="contained" size="large" onClick={onEmitir} disabled={!puedeEmitir || emitiendo}>
-          {emitiendo ? 'Guardando…' : cantidadFacturas === 1 ? 'Emitir la factura' : `Emitir las ${cantidadFacturas} facturas`}
+          {emitiendo ? 'Emitiendo…' : cantidadFacturas === 1 ? 'Emitir la factura' : `Emitir las ${cantidadFacturas} facturas`}
         </Button>
       </Box>
     </Stack>

@@ -32,7 +32,7 @@ interface EmisionReciente {
   estado: string;
   importe_total: number | null;
   creado_en: string;
-  cliente: { razon_social: string } | null;
+  cliente_razon_social: string | null;
 }
 
 export function InicioPage() {
@@ -43,7 +43,7 @@ export function InicioPage() {
   useEffect(() => {
     supabase
       .from('facturas')
-      .select('id, estado, importe_total, creado_en, cliente:clientes(razon_social)')
+      .select('id, estado, importe_total, creado_en, cliente_razon_social')
       .order('creado_en', { ascending: false })
       .limit(5)
       .then(({ data }) => {
@@ -136,9 +136,9 @@ export function InicioPage() {
             </TableHead>
             <TableBody>
               {loading && <TableSkeletonRows columns={4} />}
-              {ultimas.map((factura) => (
+              {!loading && ultimas.map((factura) => (
                 <TableRow key={factura.id} hover onClick={() => setSeleccionada(factura.id)} sx={{ cursor: 'pointer' }}>
-                  <TableCell>{factura.cliente?.razon_social ?? '—'}</TableCell>
+                  <TableCell>{factura.cliente_razon_social ?? '—'}</TableCell>
                   <TableCell>{new Date(factura.creado_en).toLocaleDateString('es-AR')}</TableCell>
                   <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                     {factura.importe_total != null ? formatearMoneda(factura.importe_total) : '—'}

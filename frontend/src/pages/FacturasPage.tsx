@@ -1,10 +1,12 @@
 import SearchIcon from '@mui/icons-material/Search';
 import {
+  Alert,
   Box,
   Chip,
   InputAdornment,
   MenuItem,
   Paper,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -15,12 +17,15 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useState } from 'react';
+import { AccionesFactura } from '../components/AccionesFactura';
+import type { MensajeAccion } from '../components/AccionesFactura';
 import { FacturaDetalleModal } from '../components/FacturaDetalleModal';
 import { PageHeader } from '../components/PageHeader';
 import { TableSkeletonRows } from '../components/TableSkeletonRows';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { TIPOS_COMPROBANTE } from '../constants/facturacion';
 import { useTablaRemota } from '../hooks/useTablaRemota';
+import { idsConNotaCredito } from '../lib/facturasApi';
 import { supabase } from '../lib/supabaseClient';
 import { formatearMoneda } from './facturar/calculos';
 
@@ -30,12 +35,14 @@ interface FilaFactura {
   cae: string | null;
   importe_total: number | null;
   estado: string;
-  cliente: { razon_social: string } | null;
+  cliente_razon_social: string | null;
   lote: { tipo_comprobante: string; fecha_emision: string; total_clientes: number } | null;
+  tiene_nota_credito: boolean;
 }
 
 export function FacturasPage() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<MensajeAccion | null>(null);
 
   const [tipoFiltro, setTipoFiltro] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState('');
@@ -47,11 +54,11 @@ export function FacturasPage() {
       let query = supabase
         .from('facturas')
         .select(
-          'id, numero_comprobante, cae, importe_total, estado, cliente:clientes!inner(razon_social), lote:lotes!inner(tipo_comprobante, fecha_emision, total_clientes)',
+          'id, numero_comprobante, cae, importe_total, estado, cliente_razon_social, lote:lotes!inner(tipo_comprobante, fecha_emision, total_clientes)',
           { count: 'exact' },
         );
 
-      if (busqueda) query = query.ilike('cliente.razon_social', `%${busqueda}%`);
+      if (busqueda) query = query.ilike('cliente_razon_social', `%${busqueda}%`);
       if (tipoFiltro) query = query.eq('lote.tipo_comprobante', tipoFiltro);
       if (estadoFiltro) query = query.eq('estado', estadoFiltro);
       if (desde) query = query.gte('lote.fecha_emision', desde);
@@ -61,12 +68,15 @@ export function FacturasPage() {
         .order('creado_en', { ascending: false })
         .range(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina - 1);
 
-      return { data: (data as unknown as FilaFactura[]) ?? [], count: count ?? 0 };
+      const filas = (data as unknown as Omit<FilaFactura, 'tiene_nota_credito'>[]) ?? [];
+      const conNotaCredito = await idsConNotaCredito(filas.map((fila) => fila.id));
+
+      return { data: filas.map((fila) => ({ ...fila, tiene_nota_credito: conNotaCredito.has(fila.id) })), count: count ?? 0 };
     },
     [tipoFiltro, estadoFiltro, desde, hasta],
   );
 
-  const { busqueda, setBusqueda, pagina, setPagina, filasPorPagina, setFilasPorPagina, filas, total, loading } =
+  const { busqueda, setBusqueda, pagina, setPagina, filasPorPagina, setFilasPorPagina, filas, total, loading, recargar } =
     useTablaRemota(fetchPage);
 
   return (
@@ -132,13 +142,14 @@ export function FacturasPage() {
               <TableCell>CAE</TableCell>
               <TableCell align="right">Importe</TableCell>
               <TableCell>Estado</TableCell>
+              <TableCell align="right">Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading && <TableSkeletonRows columns={7} />}
+            {loading && <TableSkeletonRows columns={8} />}
             {!loading && filas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={8}>
                   <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
                     {total === 0 && !busqueda && !tipoFiltro && !estadoFiltro && !desde && !hasta
                       ? 'Todavía no cargaste ninguna factura.'
@@ -147,7 +158,7 @@ export function FacturasPage() {
                 </TableCell>
               </TableRow>
             )}
-            {filas.map((factura) => (
+            {!loading && filas.map((factura) => (
               <TableRow key={factura.id} hover onClick={() => setSeleccionada(factura.id)} sx={{ cursor: 'pointer' }}>
                 <TableCell>{factura.lote ? new Date(factura.lote.fecha_emision).toLocaleDateString('es-AR') : '—'}</TableCell>
                 <TableCell>
@@ -157,13 +168,24 @@ export function FacturasPage() {
                   )}
                 </TableCell>
                 <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{factura.numero_comprobante ?? 'Pendiente'}</TableCell>
-                <TableCell>{factura.cliente?.razon_social ?? '—'}</TableCell>
+                <TableCell>{factura.cliente_razon_social ?? '—'}</TableCell>
                 <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{factura.cae ?? '—'}</TableCell>
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                   {factura.importe_total != null ? formatearMoneda(factura.importe_total) : '—'}
                 </TableCell>
                 <TableCell>
                   <Chip label={ESTADO_LABEL[factura.estado] ?? factura.estado} color={ESTADO_COLOR[factura.estado] ?? 'default'} size="small" variant="outlined" />
+                  {factura.tiene_nota_credito && <Chip label="Con nota de crédito" size="small" variant="outlined" sx={{ ml: 1 }} />}
+                </TableCell>
+                <TableCell align="right">
+                  <AccionesFactura
+                    factura={factura}
+                    tipoComprobante={factura.lote?.tipo_comprobante ?? null}
+                    tieneNotaCredito={factura.tiene_nota_credito}
+                    onVerDetalle={() => setSeleccionada(factura.id)}
+                    onCambio={recargar}
+                    onMensaje={setMensaje}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -182,7 +204,21 @@ export function FacturasPage() {
         />
       </Paper>
 
-      <FacturaDetalleModal facturaId={seleccionada} onClose={() => setSeleccionada(null)} />
+      <FacturaDetalleModal
+        facturaId={seleccionada}
+        onClose={(huboCambios) => {
+          setSeleccionada(null);
+          if (huboCambios) recargar();
+        }}
+      />
+
+      <Snackbar open={mensaje !== null} autoHideDuration={8000} onClose={() => setMensaje(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        {mensaje ? (
+          <Alert severity={mensaje.severidad} variant="filled" onClose={() => setMensaje(null)}>
+            {mensaje.texto}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
     </>
   );
 }

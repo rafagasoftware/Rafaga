@@ -27,3 +27,9 @@ export interface PuntoVenta {
   descripcion: string | null;
   habilitado: boolean;
 }
+
+export interface ActividadArca {
+  id: number;
+  orden: number;
+  descripcion: string;
+}

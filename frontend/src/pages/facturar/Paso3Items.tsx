@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ALICUOTAS_IVA } from '../../constants/facturacion';
+import { ALICUOTAS_IVA, esComprobanteSinIva } from '../../constants/facturacion';
 import { UNIDADES_MEDIDA } from '../../constants/catalogo';
 import type { CatalogoItem } from '../../types/domain';
 import { calcularSubtotalItem, calcularTotales, formatearMoneda } from './calculos';
@@ -28,9 +28,11 @@ interface Props {
   onChangeObservaciones: (valor: string) => void;
   catalogoItems: CatalogoItem[];
   modo: 'simple' | 'multiple';
+  tipoComprobante: string;
 }
 
-export function Paso3Items({ items, onChange, observaciones, onChangeObservaciones, catalogoItems, modo }: Props) {
+export function Paso3Items({ items, onChange, observaciones, onChangeObservaciones, catalogoItems, modo, tipoComprobante }: Props) {
+  const sinIva = esComprobanteSinIva(tipoComprobante);
   function actualizarItem(id: string, cambios: Partial<ItemFactura>) {
     onChange(items.map((item) => (item.id === id ? { ...item, ...cambios } : item)));
   }
@@ -53,7 +55,7 @@ export function Paso3Items({ items, onChange, observaciones, onChangeObservacion
     });
   }
 
-  const totales = calcularTotales(items);
+  const totales = calcularTotales(items, sinIva);
 
   return (
     <Box>
@@ -67,7 +69,7 @@ export function Paso3Items({ items, onChange, observaciones, onChangeObservacion
               <TableCell sx={{ width: 130 }}>Unidad</TableCell>
               <TableCell sx={{ width: 130 }}>Precio unitario</TableCell>
               <TableCell sx={{ width: 90 }}>Bonif. %</TableCell>
-              <TableCell sx={{ width: 110 }}>IVA</TableCell>
+              {!sinIva && <TableCell sx={{ width: 110 }}>IVA</TableCell>}
               <TableCell sx={{ width: 120 }} align="right">
                 Subtotal
               </TableCell>
@@ -134,21 +136,23 @@ export function Paso3Items({ items, onChange, observaciones, onChangeObservacion
                     slotProps={{ htmlInput: { min: 0, max: 100, style: { textAlign: 'right' } } }}
                   />
                 </TableCell>
-                <TableCell>
-                  <TextField
-                    select
-                    variant="standard"
-                    value={item.alicuotaIva}
-                    onChange={(e) => actualizarItem(item.id, { alicuotaIva: e.target.value as ItemFactura['alicuotaIva'] })}
-                    fullWidth
-                  >
-                    {ALICUOTAS_IVA.map((alicuota) => (
-                      <MenuItem key={alicuota.value} value={alicuota.value}>
-                        {alicuota.label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </TableCell>
+                {!sinIva && (
+                  <TableCell>
+                    <TextField
+                      select
+                      variant="standard"
+                      value={item.alicuotaIva}
+                      onChange={(e) => actualizarItem(item.id, { alicuotaIva: e.target.value as ItemFactura['alicuotaIva'] })}
+                      fullWidth
+                    >
+                      {ALICUOTAS_IVA.map((alicuota) => (
+                        <MenuItem key={alicuota.value} value={alicuota.value}>
+                          {alicuota.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </TableCell>
+                )}
                 <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                   {formatearMoneda(calcularSubtotalItem(item))}
                 </TableCell>
@@ -185,27 +189,31 @@ export function Paso3Items({ items, onChange, observaciones, onChangeObservacion
               Estos importes son por cada factura.
             </Typography>
           )}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="body2">Neto gravado</Typography>
-            <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-              {formatearMoneda(totales.neto)}
-            </Typography>
-          </Box>
-          {Object.entries(totales.ivaPorAlicuota).map(([alicuota, monto]) => (
-            <Box key={alicuota} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography variant="body2">IVA {alicuota === '10.5' ? '10,5' : alicuota}%</Typography>
-              <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {formatearMoneda(monto)}
-              </Typography>
-            </Box>
-          ))}
-          {totales.exento > 0 && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography variant="body2">Exento</Typography>
-              <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {formatearMoneda(totales.exento)}
-              </Typography>
-            </Box>
+          {!sinIva && (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="body2">Neto gravado</Typography>
+                <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {formatearMoneda(totales.neto)}
+                </Typography>
+              </Box>
+              {Object.entries(totales.ivaPorAlicuota).map(([alicuota, monto]) => (
+                <Box key={alicuota} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="body2">IVA {alicuota === '10.5' ? '10,5' : alicuota}%</Typography>
+                  <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {formatearMoneda(monto)}
+                  </Typography>
+                </Box>
+              ))}
+              {totales.exento > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="body2">Exento</Typography>
+                  <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {formatearMoneda(totales.exento)}
+                  </Typography>
+                </Box>
+              )}
+            </>
           )}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
             <Typography variant="body2">Otros tributos</Typography>

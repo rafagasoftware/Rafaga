@@ -4,12 +4,16 @@ import express from 'express';
 import { requireAuth } from './middleware/auth';
 import { adminEmisoresRouter } from './routes/adminEmisores';
 import { certificadoArcaRouter } from './routes/certificadoArca';
+import { facturasRouter } from './routes/facturas';
+import { lotesRouter } from './routes/lotes';
 import { supabase } from './supabaseClient';
 
 const app = express();
 // Mismo valor que ya usábamos para el link de invitación: en local es
 // localhost, en producción va a ser la URL real del frontend en Vercel.
-app.use(cors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:5173' }));
+// Content-Disposition tiene que estar expuesto para que el frontend pueda
+// leer el nombre con el que el backend arma cada PDF/ZIP descargado.
+app.use(cors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:5173', exposedHeaders: ['Content-Disposition'] }));
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
@@ -18,6 +22,8 @@ app.get('/health', (_req, res) => {
 
 app.use('/admin/emisores', adminEmisoresRouter);
 app.use('/me/certificado', certificadoArcaRouter);
+app.use('/lotes', lotesRouter);
+app.use('/facturas', facturasRouter);
 
 // Ruta de prueba: confirma que el token del frontend viaja bien y que
 // este backend puede leer la base con la service role.

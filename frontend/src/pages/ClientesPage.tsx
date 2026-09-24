@@ -225,7 +225,7 @@ export function ClientesPage() {
                 </TableCell>
               </TableRow>
             )}
-            {filas.map((cliente) => (
+            {!loading && filas.map((cliente) => (
               <TableRow key={cliente.id} hover>
                 <TableCell>{cliente.razon_social}</TableCell>
                 <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>
