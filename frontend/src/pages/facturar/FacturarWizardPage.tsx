@@ -26,6 +26,7 @@ import { FacturaDetalleContenido } from '../../components/FacturaDetalleContenid
 import { FacturaDetalleModal } from '../../components/FacturaDetalleModal';
 import { esComprobanteSinIva } from '../../constants/facturacion';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../../constants/estadosFactura';
+import { backendUrl } from '../../lib/backendUrl';
 import { idsConNotaCredito } from '../../lib/facturasApi';
 import { supabase } from '../../lib/supabaseClient';
 import type { ActividadArca, CatalogoItem, Cliente, Grupo, PuntoVenta } from '../../types/domain';
@@ -62,7 +63,6 @@ async function cargarFacturasDelLote(loteId: string): Promise<FacturaResumen[]> 
 }
 
 const TITULOS_PASO = ['Datos de emisión', 'Destinatarios', 'Ítems e importes', 'Revisar y emitir'];
-const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 function estadoInicial(modo: 'simple' | 'multiple'): WizardState {
   return {

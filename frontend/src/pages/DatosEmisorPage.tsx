@@ -16,10 +16,9 @@ import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { PageHeader } from '../components/PageHeader';
 import { CONDICIONES_IVA } from '../constants/fiscal';
+import { backendUrl } from '../lib/backendUrl';
 import { supabase } from '../lib/supabaseClient';
 import { ConfigurarCertificadoDialog } from './datosEmisor/ConfigurarCertificadoDialog';
-
-const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 interface EstadoCertificado {
   alias: string;

@@ -3,8 +3,7 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { PageHeader } from '../components/PageHeader';
 import { CONDICIONES_IVA } from '../constants/fiscal';
-
-const backendUrl = import.meta.env.VITE_BACKEND_URL;
+import { backendUrl } from '../lib/backendUrl';
 
 export function AdminInvitarClientePage() {
   const { session } = useAuth();

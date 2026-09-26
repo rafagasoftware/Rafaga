@@ -1,8 +1,7 @@
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from '@mui/material';
 import { useState, type ChangeEvent } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-
-const backendUrl = import.meta.env.VITE_BACKEND_URL;
+import { backendUrl } from '../../lib/backendUrl';
 
 interface Props {
   open: boolean;

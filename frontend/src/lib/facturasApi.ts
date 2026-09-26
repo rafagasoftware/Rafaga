@@ -1,6 +1,5 @@
+import { backendUrl } from './backendUrl';
 import { supabase } from './supabaseClient';
-
-const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 export interface ErrorApi {
   error: string;
