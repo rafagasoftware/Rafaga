@@ -60,10 +60,7 @@ export function DatosEmisorPage() {
   const [errorPrueba, setErrorPrueba] = useState<string | null>(null);
   const [puntosVentaArca, setPuntosVentaArca] = useState<{ numero: number; bloqueado: boolean }[] | null>(null);
   const [condicionIvaArca, setCondicionIvaArca] = useState<string | null>(null);
-  // TODO temporal: solo para ver en pantalla qué devuelve el padrón de
-  // ARCA mientras se depura esa consulta. Sacar junto con padronDebug del
-  // backend una vez confirmado que anda.
-  const [padronDebug, setPadronDebug] = useState<string | null>(null);
+  const [avisoPadron, setAvisoPadron] = useState<string | null>(null);
 
   const cargarCertificado = useCallback(async () => {
     if (!session) return;
@@ -113,6 +110,7 @@ export function DatosEmisorPage() {
     setProbando(true);
     setErrorPrueba(null);
     setPuntosVentaArca(null);
+    setAvisoPadron(null);
 
     try {
       const response = await fetch(`${backendUrl}/me/certificado/probar`, {
@@ -124,7 +122,7 @@ export function DatosEmisorPage() {
       // condicionIvaArca puede venir incluso si el resto de la prueba
       // falló (son dos consultas independientes del lado del backend).
       if (data.condicionIvaArca) setCondicionIvaArca(data.condicionIvaArca);
-      setPadronDebug(data.padronDebug ?? null);
+      setAvisoPadron(data.avisoPadron ?? null);
 
       if (!response.ok) {
         setErrorPrueba(data.error ?? 'No se pudo probar la conexión.');
@@ -337,19 +335,10 @@ export function DatosEmisorPage() {
             </Alert>
           )}
 
-          {padronDebug && (
-            <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'background.default' }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                Respuesta del padrón de ARCA (temporal, solo para revisar)
-              </Typography>
-              <Typography
-                component="pre"
-                variant="body2"
-                sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: 12, m: 0 }}
-              >
-                {padronDebug}
-              </Typography>
-            </Paper>
+          {avisoPadron && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              {avisoPadron}
+            </Alert>
           )}
         </Paper>
       </Stack>

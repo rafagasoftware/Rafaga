@@ -1,4 +1,5 @@
 import forge from 'node-forge';
+import { postSoap } from './http';
 import { supabase } from '../supabaseClient';
 
 export type Ambiente = 'homologacion' | 'produccion';
@@ -70,13 +71,8 @@ async function llamarLoginCms(cms: string, url: string): Promise<string> {
     '</soapenv:Body>' +
     '</soapenv:Envelope>';
 
-  const respuesta = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' },
-    body: sobre,
-  });
-
-  const texto = await respuesta.text();
+  const respuesta = await postSoap(url, sobre, '');
+  const texto = respuesta.texto;
 
   const fallo = texto.match(/<faultstring>([\s\S]*?)<\/faultstring>/);
   if (fallo) {

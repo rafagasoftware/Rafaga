@@ -1,3 +1,4 @@
+import { postSoap } from './http';
 import type { Ambiente, Credenciales } from './wsaa';
 
 const WSFE_URLS: Record<Ambiente, string> = {
@@ -24,16 +25,8 @@ function bloqueAuth(credenciales: Credenciales, cuit: string): string {
 async function llamarWSFE(operacion: string, cuerpoInterno: string, ambiente: Ambiente): Promise<string> {
   const sobre = envolverSoap(`<ar:${operacion}>${cuerpoInterno}</ar:${operacion}>`);
 
-  const respuesta = await fetch(WSFE_URLS[ambiente], {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/xml; charset=utf-8',
-      SOAPAction: `"${NS}${operacion}"`,
-    },
-    body: sobre,
-  });
-
-  const texto = await respuesta.text();
+  const respuesta = await postSoap(WSFE_URLS[ambiente], sobre, `"${NS}${operacion}"`);
+  const texto = respuesta.texto;
 
   const fallo = texto.match(/<faultstring>([\s\S]*?)<\/faultstring>/);
   if (fallo) {
