@@ -1,5 +1,4 @@
 import { Box, Checkbox, ListItemText, MenuItem, Stack, TextField, Typography } from '@mui/material';
-import type { SelectChangeEvent } from '@mui/material';
 import type { ChangeEvent } from 'react';
 import { CONCEPTOS, CONDICIONES_VENTA, TIPOS_COMPROBANTE } from '../../constants/facturacion';
 import type { ActividadArca, PuntoVenta } from '../../types/domain';
@@ -22,8 +21,11 @@ export function Paso1DatosEmision({ valores, onChange, puntosVenta, tiposComprob
 
   // ARCA no exige una sola condición de venta por comprobante — es habitual
   // que una factura acepte varias (ej. "Contado / Tarjeta de crédito").
-  function handleChangeCondicionesVenta(event: SelectChangeEvent<string[]>) {
-    const valor = event.target.value;
+  // TextField.onChange está tipado para un input común incluso en modo
+  // select — con multiple:true el valor real en runtime es string[], pero
+  // hay que forzarlo porque TS solo ve HTMLInputElement.value: string.
+  function handleChangeCondicionesVenta(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const valor = event.target.value as unknown as string | string[];
     onChange({ ...valores, condicionesVenta: typeof valor === 'string' ? valor.split(',') : valor });
   }
 
