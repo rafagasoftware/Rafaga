@@ -337,6 +337,7 @@ export function FacturarWizardPage() {
                       />
                       {factura.tiene_nota_credito && <Chip label="Con nota de crédito" size="small" variant="outlined" sx={{ ml: 1 }} />}
                     </TableCell>
+                    
                     <TableCell align="right">
                       <AccionesFactura
                         factura={factura}
