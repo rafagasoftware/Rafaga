@@ -127,22 +127,9 @@ certificadoArcaRouter.post('/probar', requireAuth, async (req, res) => {
   // El padrón es un servicio de ARCA aparte de WSFE — necesita su propia
   // autorización, que el emisor puede no haber dado todavía. Si falla, no
   // arruina el resto de "Probar conexión": simplemente no se puede
-  // verificar la condición de IVA por ahora.
+  // verificar la condición de IVA por ahora, y se avisa por qué.
   let condicionIvaArca: string | null = null;
-  let condicionIvaCoincide: boolean | null = null;
-  // TODO temporal: sacar padronDebug de la respuesta, y todo este bloque
-  // de prueba, una vez confirmado que la consulta al padrón funciona.
-  //
-  // El padrón de homologación no tiene datos del CUIT real del emisor
-  // (30714705365) — solo reconoce un puñado de CUITs de ejemplo que da
-  // ARCA para testing. Por eso acá se pide el de un CUIT de prueba
-  // (idPersona), no el del emisor, y justo por eso NO se compara contra
-  // condicion_iva ni se guarda en emisores: sería comparar el dato del
-  // emisor contra el de otra persona. Cuando se pase a producción, volver
-  // a `consultarCondicionIva(credencialesPadron, emisor.cuit, data.ambiente)`
-  // sin el idPersona de prueba, y descomentar el guardado/comparación.
-  let padronDebug: string | null = null;
-  const CUIT_PRUEBA_PADRON = '30202020204';
+  let avisoPadron: string | null = null;
   try {
     const credencialesPadron = await obtenerCredencialesWSAA(
       req.emisorId as string,
@@ -151,10 +138,20 @@ certificadoArcaRouter.post('/probar', requireAuth, async (req, res) => {
       data.ambiente,
       'ws_sr_constancia_inscripcion',
     );
-    const padron = await consultarCondicionIva(credencialesPadron, emisor.cuit, data.ambiente, CUIT_PRUEBA_PADRON);
-    padronDebug = `OK (CUIT de PRUEBA ${CUIT_PRUEBA_PADRON}, no el del emisor) — condición derivada: ${padron.condicionIva}\n\n${padron.crudo}`;
+    condicionIvaArca = await consultarCondicionIva(credencialesPadron, emisor.cuit, data.ambiente);
+    const { error: errorCondicion } = await supabase
+      .from('emisores')
+      .update({ condicion_iva_arca: condicionIvaArca })
+      .eq('id', req.emisorId);
+    if (errorCondicion) console.error('No se pudo guardar emisores.condicion_iva_arca:', errorCondicion.message);
   } catch (padronError) {
-    padronDebug = padronError instanceof Error ? padronError.message : 'Error desconocido al consultar el padrón.';
+    const motivo = padronError instanceof Error ? padronError.message : 'Error desconocido.';
+    console.error('No se pudo consultar el padrón de ARCA:', motivo);
+    avisoPadron = /no autorizado/i.test(motivo)
+      ? 'No pudimos verificar tu condición de IVA: el certificado todavía no está autorizado para consultar el padrón de ARCA. ' +
+        'En el Administrador de Relaciones de Clave Fiscal agregá el servicio "Consulta de Constancia de Inscripción" para este certificado. ' +
+        'Esto no impide facturar.'
+      : `No pudimos verificar tu condición de IVA en el padrón de ARCA (${motivo}). Esto no impide facturar.`;
   }
 
   await supabase
@@ -163,9 +160,9 @@ certificadoArcaRouter.post('/probar', requireAuth, async (req, res) => {
     .eq('emisor_id', req.emisorId);
 
   if (errorPuntosVenta) {
-    res.status(502).json({ error: errorPuntosVenta, condicionIvaArca, condicionIvaCoincide, padronDebug });
+    res.status(502).json({ error: errorPuntosVenta, condicionIvaArca, avisoPadron });
     return;
   }
 
-  res.json({ ok: true, puntosVenta, condicionIvaArca, condicionIvaCoincide, padronDebug });
+  res.json({ ok: true, puntosVenta, condicionIvaArca, avisoPadron });
 });
