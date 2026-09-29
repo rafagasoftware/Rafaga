@@ -328,7 +328,7 @@ export function FacturarWizardPage() {
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                       {factura.importe_total != null ? formatearMoneda(factura.importe_total) : '—'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{display: 'flex', gap: 1}}>
                       <Chip
                         label={ESTADO_LABEL[factura.estado] ?? factura.estado}
                         color={ESTADO_COLOR[factura.estado] ?? 'default'}
