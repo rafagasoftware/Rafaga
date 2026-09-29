@@ -49,3 +49,13 @@ const formateadorMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', cu
 export function formatearMoneda(valor: number): string {
   return formateadorMoneda.format(valor);
 }
+
+// A propósito NO usa `new Date(fechaIso).toLocaleDateString()`: un string
+// "2026-09-26" se parsea como medianoche UTC, y en un huso horario detrás
+// de UTC (como Argentina) eso cae en el día anterior — "26/09" terminaría
+// mostrando "25/09". Como fechaIso ya viene en YYYY-MM-DD, alcanza con
+// reordenar el texto, sin pasar por Date en ningún momento.
+export function formatearFecha(fechaIso: string): string {
+  const [anio, mes, dia] = fechaIso.split('-');
+  return `${dia}/${mes}/${anio}`;
+}

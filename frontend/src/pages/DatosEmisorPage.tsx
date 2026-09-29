@@ -36,6 +36,9 @@ interface FormValues {
   alcanzado_rg_3368: boolean;
 }
 
+const TIPOS_LOGO_ACEPTADOS = ['image/png', 'image/jpeg'];
+const TAMANIO_MAXIMO_LOGO = 2 * 1024 * 1024;
+
 export function DatosEmisorPage() {
   const { session } = useAuth();
   const [razonSocial, setRazonSocial] = useState('');
@@ -49,6 +52,17 @@ export function DatosEmisorPage() {
   });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [logoPath, setLogoPath] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [subiendoLogo, setSubiendoLogo] = useState(false);
+  const [errorLogo, setErrorLogo] = useState<string | null>(null);
+
+  const [nombreFantasia, setNombreFantasia] = useState('');
+  const [leyenda, setLeyenda] = useState('');
+  const [guardandoLeyenda, setGuardandoLeyenda] = useState(false);
+  const [errorLeyenda, setErrorLeyenda] = useState<string | null>(null);
+  const [leyendaGuardadaOk, setLeyendaGuardadaOk] = useState(false);
 
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
@@ -102,10 +116,117 @@ export function DatosEmisorPage() {
             alcanzado_rg_3368: data.alcanzado_rg_3368 ?? false,
           });
           setCondicionIvaArca(data.condicion_iva_arca ?? null);
+          setLogoPath(data.logo_path ?? null);
+          setNombreFantasia(data.nombre_fantasia ?? '');
+          setLeyenda(data.leyenda_pdf ?? '');
         }
         setLoading(false);
       });
   }, [session]);
+
+  useEffect(() => {
+    if (!logoPath) return;
+    let cancelado = false;
+    supabase.storage
+      .from('logos-emisor')
+      .createSignedUrl(logoPath, 3600)
+      .then(({ data }) => {
+        if (!cancelado) setLogoUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [logoPath]);
+
+  async function handleSubirLogo(event: ChangeEvent<HTMLInputElement>) {
+    const archivo = event.target.files?.[0];
+    event.target.value = '';
+    if (!archivo || !session) return;
+
+    setErrorLogo(null);
+
+    if (!TIPOS_LOGO_ACEPTADOS.includes(archivo.type)) {
+      setErrorLogo('Tiene que ser una imagen PNG o JPEG.');
+      return;
+    }
+    if (archivo.size > TAMANIO_MAXIMO_LOGO) {
+      setErrorLogo('La imagen no puede pesar más de 2 MB.');
+      return;
+    }
+
+    setSubiendoLogo(true);
+
+    const extension = archivo.type === 'image/png' ? 'png' : 'jpg';
+    const rutaNueva = `${session.user.id}/logo.${extension}`;
+
+    // Si el logo anterior tenía otra extensión, el archivo viejo queda
+    // huérfano en el bucket — se borra antes de subir el nuevo.
+    if (logoPath && logoPath !== rutaNueva) {
+      await supabase.storage.from('logos-emisor').remove([logoPath]);
+    }
+
+    const { error: errorSubida } = await supabase.storage
+      .from('logos-emisor')
+      .upload(rutaNueva, archivo, { upsert: true, contentType: archivo.type });
+
+    if (errorSubida) {
+      setErrorLogo('No se pudo subir la imagen.');
+      setSubiendoLogo(false);
+      return;
+    }
+
+    const { error: errorGuardarRuta } = await supabase.from('emisores').update({ logo_path: rutaNueva }).eq('id', session.user.id);
+
+    setSubiendoLogo(false);
+
+    if (errorGuardarRuta) {
+      setErrorLogo('La imagen se subió pero no se pudo guardar. Probá de nuevo.');
+      return;
+    }
+
+    setLogoPath(rutaNueva);
+  }
+
+  async function handleQuitarLogo() {
+    if (!session || !logoPath) return;
+
+    setSubiendoLogo(true);
+    setErrorLogo(null);
+
+    await supabase.storage.from('logos-emisor').remove([logoPath]);
+    const { error } = await supabase.from('emisores').update({ logo_path: null }).eq('id', session.user.id);
+
+    setSubiendoLogo(false);
+
+    if (error) {
+      setErrorLogo('No se pudo quitar el logo.');
+      return;
+    }
+
+    setLogoPath(null);
+  }
+
+  async function handleGuardarLeyenda() {
+    if (!session) return;
+
+    setGuardandoLeyenda(true);
+    setErrorLeyenda(null);
+    setLeyendaGuardadaOk(false);
+
+    const { error } = await supabase
+      .from('emisores')
+      .update({ nombre_fantasia: nombreFantasia.trim() || null, leyenda_pdf: leyenda.trim() || null })
+      .eq('id', session.user.id);
+
+    setGuardandoLeyenda(false);
+
+    if (error) {
+      setErrorLeyenda('No se pudo guardar la leyenda.');
+      return;
+    }
+
+    setLeyendaGuardadaOk(true);
+  }
 
   async function handleProbarConexion() {
     if (!session) return;
@@ -179,6 +300,10 @@ export function DatosEmisorPage() {
     setGuardadoOk(true);
   }
 
+  // Tapa el logoUrl viejo mientras se resuelve el nuevo (o directamente si
+  // se quitó el logo), en vez de resetearlo en el efecto de arriba.
+  const logoUrlMostrado = logoPath ? logoUrl : null;
+
   return (
     <>
       <PageHeader title="Datos del emisor" />
@@ -205,6 +330,99 @@ export function DatosEmisorPage() {
         </Stack>
       ) : (
       <Stack spacing={3}>
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Logo
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Se muestra arriba a la izquierda de las facturas en PDF. Formatos PNG o JPEG, hasta 2 MB.
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              sx={{
+                width: 140,
+                height: 55,
+                border: '1px dashed',
+                borderColor: 'divider',
+                borderRadius: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}
+            >
+              {logoUrlMostrado ? (
+                <Box component="img" src={logoUrlMostrado} alt="Logo del emisor" sx={{ maxWidth: '100%', maxHeight: '100%' }} />
+              ) : (
+                <Typography variant="caption" color="text.secondary">
+                  Sin logo
+                </Typography>
+              )}
+            </Box>
+
+            <Stack spacing={1}>
+              <Button variant="outlined" component="label" size="small" disabled={subiendoLogo}>
+                {subiendoLogo ? 'Subiendo…' : logoPath ? 'Cambiar logo' : 'Subir logo'}
+                <input type="file" hidden accept="image/png,image/jpeg" onChange={handleSubirLogo} />
+              </Button>
+              {logoPath && (
+                <Button size="small" color="error" onClick={handleQuitarLogo} disabled={subiendoLogo}>
+                  Quitar logo
+                </Button>
+              )}
+            </Stack>
+          </Box>
+
+          {errorLogo && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {errorLogo}
+            </Alert>
+          )}
+
+          <TextField
+            label="Nombre de fantasía"
+            value={nombreFantasia}
+            onChange={(e) => {
+              setNombreFantasia(e.target.value);
+              setLeyendaGuardadaOk(false);
+            }}
+            fullWidth
+            helperText="Aparece en negrita justo debajo del logo, antes de la leyenda."
+            sx={{ mt: 3 }}
+          />
+
+          <TextField
+            label="Leyenda"
+            value={leyenda}
+            onChange={(e) => {
+              setLeyenda(e.target.value);
+              setLeyendaGuardadaOk(false);
+            }}
+            multiline
+            minRows={3}
+            fullWidth
+            helperText="Aparece debajo del nombre de fantasía en el PDF. Respeta los saltos de línea tal cual los escribas."
+            sx={{ mt: 2 }}
+          />
+          {errorLeyenda && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {errorLeyenda}
+            </Alert>
+          )}
+          {leyendaGuardadaOk && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              Se guardaron los cambios.
+            </Alert>
+          )}
+          <Box sx={{ mt: 1.5 }}>
+            <Button variant="outlined" size="small" onClick={handleGuardarLeyenda} disabled={guardandoLeyenda}>
+              {guardandoLeyenda ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </Box>
+        </Paper>
+
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Perfil fiscal

@@ -28,7 +28,7 @@ import { useFacturaDetalle } from '../hooks/useFacturaDetalle';
 import { ESTADO_COLOR, ESTADO_LABEL } from '../constants/estadosFactura';
 import { ALICUOTAS_IVA, CONCEPTOS, esComprobanteSinIva, TIPOS_COMPROBANTE } from '../constants/facturacion';
 import { descargarPdfFactura } from '../lib/facturasApi';
-import { calcularSubtotalItem, calcularTotales, formatearMoneda } from '../pages/facturar/calculos';
+import { calcularSubtotalItem, calcularTotales, formatearFecha, formatearMoneda } from '../pages/facturar/calculos';
 import type { ItemFactura } from '../pages/facturar/types';
 
 interface Props {
@@ -255,7 +255,7 @@ export function FacturaDetalleContenido({ facturaId, onHuboCambios }: Props) {
               {factura.numero_comprobante ?? 'pendiente'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Emisión {new Date(factura.lote.fecha_emision).toLocaleDateString('es-AR')}
+              Emisión {formatearFecha(factura.lote.fecha_emision)}
             </Typography>
           </Grid>
         </Grid>
@@ -274,7 +274,7 @@ export function FacturaDetalleContenido({ facturaId, onHuboCambios }: Props) {
             )}
             {emisor.inicio_actividades && (
               <Typography variant="body2" color="text.secondary">
-                Inicio de actividades: {new Date(emisor.inicio_actividades).toLocaleDateString('es-AR')}
+                Inicio de actividades: {formatearFecha(emisor.inicio_actividades)}
               </Typography>
             )}
           </Grid>
@@ -284,12 +284,17 @@ export function FacturaDetalleContenido({ facturaId, onHuboCambios }: Props) {
             </Typography>
             {factura.lote.periodo_desde && (
               <Typography variant="body2" color="text.secondary">
-                Período: {factura.lote.periodo_desde} al {factura.lote.periodo_hasta}
+                Período: Desde {formatearFecha(factura.lote.periodo_desde)} Hasta {formatearFecha(factura.lote.periodo_hasta!)}
               </Typography>
             )}
             {factura.lote.vencimiento_pago && (
               <Typography variant="body2" color="text.secondary">
-                Vencimiento de pago: {factura.lote.vencimiento_pago}
+                Vencimiento de pago: {formatearFecha(factura.lote.vencimiento_pago)}
+              </Typography>
+            )}
+            {factura.lote.condicion_venta && (
+              <Typography variant="body2" color="text.secondary">
+                Condición de venta: {factura.lote.condicion_venta}
               </Typography>
             )}
           </Grid>
@@ -297,7 +302,7 @@ export function FacturaDetalleContenido({ facturaId, onHuboCambios }: Props) {
 
         <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
           <Typography variant="caption" color="text.secondary">
-            RECEPTOR
+            CLIENTE
           </Typography>
           <Typography variant="body1">{factura.cliente.razon_social}</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -392,7 +397,7 @@ export function FacturaDetalleContenido({ facturaId, onHuboCambios }: Props) {
                 CAE: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{factura.cae}</span>
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Vencimiento CAE: {factura.cae_vencimiento}
+                Vencimiento CAE: {factura.cae_vencimiento ? formatearFecha(factura.cae_vencimiento) : '—'}
               </Typography>
             </Box>
           ) : (

@@ -10,6 +10,9 @@ export interface DatosFacturaPdf {
     domicilio: string | null;
     ingresos_brutos: string | null;
     inicio_actividades: string | null;
+    leyenda_pdf: string | null;
+    nombre_fantasia: string | null;
+    logo: Buffer | null;
   };
   factura: {
     numero_comprobante: string;
@@ -24,11 +27,11 @@ export interface DatosFacturaPdf {
   };
   lote: {
     tipo_comprobante: string;
-    concepto: string;
     fecha_emision: string;
     periodo_desde: string | null;
     periodo_hasta: string | null;
     vencimiento_pago: string | null;
+    condicion_venta: string | null;
     punto_venta_numero: number;
   };
   items: Array<{
@@ -42,12 +45,6 @@ export interface DatosFacturaPdf {
   }>;
 }
 
-const CONCEPTO_LABEL: Record<string, string> = {
-  productos: 'Productos',
-  servicios: 'Servicios',
-  productos_servicios: 'Productos y servicios',
-};
-
 const ALICUOTA_LABEL: Record<string, string> = {
   '21': '21%',
   '10.5': '10,5%',
@@ -57,6 +54,16 @@ const ALICUOTA_LABEL: Record<string, string> = {
 
 function formatearMoneda(valor: number): string {
   return valor.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+}
+
+// A propósito NO usa `new Date(fechaIso).toLocaleDateString()`: un string
+// "2026-09-26" se parsea como medianoche UTC, y en un huso horario detrás
+// de UTC (como Argentina) eso cae en el día anterior. Como fechaIso ya
+// viene en YYYY-MM-DD, alcanza con reordenar el texto, sin pasar por Date.
+// Misma fórmula que frontend/src/pages/facturar/calculos.ts.
+function formatearFecha(fechaIso: string): string {
+  const [anio, mes, dia] = fechaIso.split('-');
+  return `${dia}/${mes}/${anio}`;
 }
 
 function infoComprobante(tipoComprobante: string) {
@@ -142,11 +149,34 @@ export async function generarFacturaPdf(datos: DatosFacturaPdf): Promise<Buffer>
 
   const anchoUtil = doc.page.width - 80;
 
-  // Encabezado: emisor a la izquierda, letra/código al centro, datos del
-  // comprobante a la derecha.
-  doc.font('Helvetica-Bold').fontSize(16).text(emisor.razon_social, 40, 40, { width: 260 });
-  doc.font('Helvetica').fontSize(9).fillColor('#555').text(emisor.condicion_iva, 40, 62, { width: 260 });
-  if (emisor.domicilio) doc.text(emisor.domicilio, 40, 74, { width: 260 });
+  // Encabezado: logo del emisor (si tiene) a la izquierda, letra/código al
+  // centro, datos del comprobante a la derecha. Los datos identificatorios
+  // del emisor van todos juntos más abajo, en su propia sección — así no
+  // hay que decidir cuáles entran acá arriba y cuáles no.
+  if (emisor.logo) {
+    try {
+      doc.image(emisor.logo, 40, 40, { fit: [140, 50] });
+    } catch {
+      // Buffer no reconocido como imagen (pdfkit solo entiende JPEG/PNG) —
+      // se omite en vez de tirar abajo la generación de todo el PDF.
+    }
+  }
+
+  // Nombre de fantasía (negrita, margen mínimo) y leyenda debajo del logo
+  // (o del área que le corresponde, si no cargó uno). La leyenda es texto
+  // libre del emisor que respeta los saltos de línea que haya escrito,
+  // porque doc.text() ya interpreta "\n" como fin de línea.
+  let yIzquierda = 40 + (emisor.logo ? 60 : 0);
+  if (emisor.nombre_fantasia) {
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#000');
+    doc.text(emisor.nombre_fantasia, 40, yIzquierda, { width: 200 });
+    yIzquierda += doc.heightOfString(emisor.nombre_fantasia, { width: 200 }) + 2;
+  }
+  if (emisor.leyenda_pdf) {
+    doc.font('Helvetica').fontSize(8).fillColor('#555');
+    doc.text(emisor.leyenda_pdf, 40, yIzquierda, { width: 200 });
+    yIzquierda += doc.heightOfString(emisor.leyenda_pdf, { width: 200 });
+  }
 
   doc.rect(270, 40, 55, 55).stroke();
   doc.font('Helvetica-Bold').fontSize(28).fillColor('#000').text(comprobante.letra, 270, 52, { width: 55, align: 'center' });
@@ -157,44 +187,71 @@ export async function generarFacturaPdf(datos: DatosFacturaPdf): Promise<Buffer>
     .font('Helvetica')
     .fontSize(9)
     .text(`${String(lote.punto_venta_numero).padStart(4, '0')}-${factura.numero_comprobante}`, 355, 60, { width: 200, align: 'right' });
-  doc.fillColor('#555').text(`Emisión ${lote.fecha_emision}`, 355, 73, { width: 200, align: 'right' });
+  doc.fillColor('#555');
 
+  // Alto real de cada línea, no un valor fijo: "Condición de venta" puede
+  // traer varias opciones separadas por coma (el emisor puede elegir más
+  // de una) y envolver a dos o tres líneas — con un alto fijo por línea
+  // esas líneas de más pisarían la sección de abajo.
+  let yComprobante = 73;
+  const lineasDerecha: string[] = [`Emisión ${formatearFecha(lote.fecha_emision)}`];
+  if (lote.periodo_desde) {
+    lineasDerecha.push(`Período: Desde ${formatearFecha(lote.periodo_desde)} Hasta ${formatearFecha(lote.periodo_hasta!)}`);
+  }
+  if (lote.vencimiento_pago) lineasDerecha.push(`Vencimiento de pago: ${formatearFecha(lote.vencimiento_pago)}`);
+  if (lote.condicion_venta) lineasDerecha.push(`Condición de venta: ${lote.condicion_venta}`);
+
+  for (const linea of lineasDerecha) {
+    doc.text(linea, 355, yComprobante, { width: 200, align: 'right' });
+    yComprobante += doc.heightOfString(linea, { width: 200, align: 'right' }) + 4;
+  }
+
+  const yDivisor = Math.max(105, yComprobante + 20, yIzquierda + 15);
   doc
-    .moveTo(40, 105)
-    .lineTo(40 + anchoUtil, 105)
+    .moveTo(40, yDivisor)
+    .lineTo(40 + anchoUtil, yDivisor)
     .strokeColor('#ccc')
     .stroke();
 
-  // CUIT / concepto
-  doc.fillColor('#555').fontSize(9);
-  doc.text(`CUIT: ${emisor.cuit}`, 40, 115);
-  if (emisor.ingresos_brutos) doc.text(`Ingresos brutos: ${emisor.ingresos_brutos}`, 40, 128);
-  if (emisor.inicio_actividades) doc.text(`Inicio de actividades: ${emisor.inicio_actividades}`, 40, 141);
-
-  doc.text(`Concepto: ${CONCEPTO_LABEL[lote.concepto] ?? lote.concepto}`, 355, 115, { width: 200, align: 'right' });
-  if (lote.periodo_desde) {
-    doc.text(`Período: ${lote.periodo_desde} al ${lote.periodo_hasta}`, 355, 128, { width: 200, align: 'right' });
-  }
-  if (lote.vencimiento_pago) {
-    doc.text(`Vencimiento de pago: ${lote.vencimiento_pago}`, 355, 141, { width: 200, align: 'right' });
-  }
-
-  // Receptor
-  let y = 165;
-  doc.rect(40, y, anchoUtil, 50).fillAndStroke('#F4F6F7', '#D7DCE0');
-  doc.fillColor('#555').fontSize(7).text('RECEPTOR', 48, y + 8);
-  doc.fillColor('#000').font('Helvetica-Bold').fontSize(10).text(factura.cliente_razon_social, 48, y + 19);
+  // Emisor: todos sus datos identificatorios juntos, en una sola sección
+  // (antes estaban repartidos entre el encabezado y esta franja).
+  let y = yDivisor + 10;
+  const alturaCajaEmisor = 76;
+  doc.rect(40, y, anchoUtil, alturaCajaEmisor).fillAndStroke('#F4F6F7', '#D7DCE0');
+  doc.fillColor('#555').fontSize(7).text('EMISOR', 48, y + 8);
   doc
+    .fillColor('#000')
     .font('Helvetica')
-    .fontSize(9)
-    .fillColor('#555')
-    .text(`${factura.cliente_tipo_documento} ${factura.cliente_numero_documento} · ${factura.cliente_condicion_iva}`, 48, y + 33);
-  if (factura.cliente_domicilio) {
-    doc.text(factura.cliente_domicilio, 300, y + 33, { width: 247, align: 'right' });
+    .fontSize(10)
+    .text('Razón Social: ', 48, y + 19, { continued: true, width: anchoUtil - 16 });
+  doc.font('Helvetica-Bold').text(emisor.razon_social);
+  doc.font('Helvetica').fontSize(9).fillColor('#555');
+  doc.text(`CUIT: ${emisor.cuit}`, 48, y + 34, { width: 240 });
+  doc.text(`Condición frente al IVA: ${emisor.condicion_iva}`, 300, y + 34, { width: 247, align: 'right' });
+  if (emisor.domicilio) doc.text(`Domicilio: ${emisor.domicilio}`, 48, y + 48, { width: 240 });
+  if (emisor.ingresos_brutos) doc.text(`Ingresos Brutos: ${emisor.ingresos_brutos}`, 300, y + 48, { width: 247, align: 'right' });
+  if (emisor.inicio_actividades) {
+    doc.text(`Inicio de actividades: ${formatearFecha(emisor.inicio_actividades)}`, 48, y + 62, { width: 240 });
   }
+
+  // Cliente
+  y += alturaCajaEmisor + 15;
+  const alturaCajaReceptor = 62;
+  doc.rect(40, y, anchoUtil, alturaCajaReceptor).fillAndStroke('#F4F6F7', '#D7DCE0');
+  doc.fillColor('#555').fontSize(7).text('CLIENTE', 48, y + 8);
+  doc
+    .fillColor('#000')
+    .font('Helvetica')
+    .fontSize(10)
+    .text('Razón Social: ', 48, y + 19, { continued: true, width: anchoUtil - 16 });
+  doc.font('Helvetica-Bold').text(factura.cliente_razon_social);
+  doc.font('Helvetica').fontSize(9).fillColor('#555');
+  doc.text(`Documento: ${factura.cliente_tipo_documento} ${factura.cliente_numero_documento}`, 48, y + 34, { width: 240 });
+  doc.text(`Condición frente al IVA: ${factura.cliente_condicion_iva}`, 300, y + 34, { width: 247, align: 'right' });
+  if (factura.cliente_domicilio) doc.text(`Domicilio: ${factura.cliente_domicilio}`, 48, y + 48, { width: 240 });
 
   // Ítems
-  y += 70;
+  y += alturaCajaReceptor + 20;
   const columnas = [
     { titulo: 'Código', x: 40, ancho: 50 },
     { titulo: 'Descripción', x: 95, ancho: 150 },
@@ -272,7 +329,7 @@ export async function generarFacturaPdf(datos: DatosFacturaPdf): Promise<Buffer>
 
   doc.font('Helvetica').fontSize(9).fillColor('#000');
   doc.text(`CAE N°: ${factura.cae}`, 300, yPie, { width: 255, align: 'right' });
-  doc.fillColor('#555').text(`Fecha de Vto. de CAE: ${factura.cae_vencimiento}`, 300, yPie + 13, { width: 255, align: 'right' });
+  doc.fillColor('#555').text(`Fecha de Vto. de CAE: ${formatearFecha(factura.cae_vencimiento)}`, 300, yPie + 13, { width: 255, align: 'right' });
 
   doc
     .fontSize(7)

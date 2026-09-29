@@ -14,11 +14,11 @@ interface FacturaParaPdf {
   cliente_condicion_iva: string | null;
   lotes: {
     tipo_comprobante: string;
-    concepto: string;
     fecha_emision: string;
     periodo_desde: string | null;
     periodo_hasta: string | null;
     vencimiento_pago: string | null;
+    condicion_venta: string | null;
     puntos_venta: { numero: number } | null;
     lote_items: Array<{
       codigo: string;
@@ -39,6 +39,9 @@ export interface EmisorParaPdf {
   domicilio: string | null;
   ingresos_brutos: string | null;
   inicio_actividades: string | null;
+  leyenda_pdf: string | null;
+  nombre_fantasia: string | null;
+  logo: Buffer | null;
 }
 
 export type ResultadoPdf =
@@ -48,10 +51,19 @@ export type ResultadoPdf =
 export async function cargarEmisorParaPdf(emisorId: string): Promise<EmisorParaPdf | null> {
   const { data } = await supabase
     .from('emisores')
-    .select('razon_social, cuit, condicion_iva, domicilio, ingresos_brutos, inicio_actividades')
+    .select('razon_social, cuit, condicion_iva, domicilio, ingresos_brutos, inicio_actividades, leyenda_pdf, nombre_fantasia, logo_path')
     .eq('id', emisorId)
     .single();
-  return data;
+  if (!data) return null;
+
+  const { logo_path, ...resto } = data;
+  let logo: Buffer | null = null;
+  if (logo_path) {
+    const { data: archivo } = await supabase.storage.from('logos-emisor').download(logo_path);
+    if (archivo) logo = Buffer.from(await archivo.arrayBuffer());
+  }
+
+  return { ...resto, logo };
 }
 
 // Genera el PDF del comprobante al vuelo (no se guarda: es rápido de
@@ -63,7 +75,7 @@ export async function obtenerPdfDeFactura(facturaId: string, emisorId: string, e
   const { data } = await supabase
     .from('facturas')
     .select(
-      'numero_comprobante, cae, cae_vencimiento, importe_total, estado, cliente_tipo_documento, cliente_numero_documento, cliente_razon_social, cliente_domicilio, cliente_condicion_iva, lotes!inner(tipo_comprobante, concepto, fecha_emision, periodo_desde, periodo_hasta, vencimiento_pago, puntos_venta(numero), lote_items(codigo, descripcion, cantidad, unidad_medida, precio_unitario, bonificacion_pct, alicuota_iva))',
+      'numero_comprobante, cae, cae_vencimiento, importe_total, estado, cliente_tipo_documento, cliente_numero_documento, cliente_razon_social, cliente_domicilio, cliente_condicion_iva, lotes!inner(tipo_comprobante, fecha_emision, periodo_desde, periodo_hasta, vencimiento_pago, condicion_venta, puntos_venta(numero), lote_items(codigo, descripcion, cantidad, unidad_medida, precio_unitario, bonificacion_pct, alicuota_iva))',
     )
     .eq('id', facturaId)
     .eq('emisor_id', emisorId)
@@ -103,11 +115,11 @@ export async function obtenerPdfDeFactura(facturaId: string, emisorId: string, e
     },
     lote: {
       tipo_comprobante: factura.lotes.tipo_comprobante,
-      concepto: factura.lotes.concepto,
       fecha_emision: factura.lotes.fecha_emision,
       periodo_desde: factura.lotes.periodo_desde,
       periodo_hasta: factura.lotes.periodo_hasta,
       vencimiento_pago: factura.lotes.vencimiento_pago,
+      condicion_venta: factura.lotes.condicion_venta,
       punto_venta_numero: ptoVta,
     },
     items: factura.lotes.lote_items,

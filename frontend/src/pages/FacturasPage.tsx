@@ -27,7 +27,7 @@ import { TIPOS_COMPROBANTE } from '../constants/facturacion';
 import { useTablaRemota } from '../hooks/useTablaRemota';
 import { idsConNotaCredito } from '../lib/facturasApi';
 import { supabase } from '../lib/supabaseClient';
-import { formatearMoneda } from './facturar/calculos';
+import { formatearFecha, formatearMoneda } from './facturar/calculos';
 
 interface FilaFactura {
   id: string;
@@ -160,7 +160,7 @@ export function FacturasPage() {
             )}
             {!loading && filas.map((factura) => (
               <TableRow key={factura.id} hover onClick={() => setSeleccionada(factura.id)} sx={{ cursor: 'pointer' }}>
-                <TableCell>{factura.lote ? new Date(factura.lote.fecha_emision).toLocaleDateString('es-AR') : '—'}</TableCell>
+                <TableCell>{factura.lote ? formatearFecha(factura.lote.fecha_emision) : '—'}</TableCell>
                 <TableCell>
                   {TIPOS_COMPROBANTE.find((t) => t.value === factura.lote?.tipo_comprobante)?.label ?? '—'}
                   {factura.lote && factura.lote.total_clientes > 1 && (

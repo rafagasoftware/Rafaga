@@ -187,6 +187,17 @@ export async function emitirNotaCredito(
   const totales = calcularTotalesItems(itemsOriginales as ItemParaTotales[], esCbteTipoSinIva(cbteTipoNc));
   const hoy = new Date().toISOString().slice(0, 10);
 
+  // ARCA exige que FchVtoPago no sea anterior a la fecha del comprobante.
+  // La nota de crédito se emite hoy, pero el vencimiento de pago de la
+  // factura original puede ya haber pasado (es común: la NC suele salir
+  // días o semanas después) — en ese caso hay que llevarlo a hoy en vez de
+  // copiarlo tal cual, o ARCA la rechaza.
+  const vencimientoPagoNc = original.lotes.vencimiento_pago
+    ? original.lotes.vencimiento_pago > hoy
+      ? original.lotes.vencimiento_pago
+      : hoy
+    : null;
+
   const { data: loteNc, error: errorLote } = await supabase
     .from('lotes')
     .insert({
@@ -197,7 +208,7 @@ export async function emitirNotaCredito(
       fecha_emision: hoy,
       periodo_desde: original.lotes.periodo_desde,
       periodo_hasta: original.lotes.periodo_hasta,
-      vencimiento_pago: original.lotes.vencimiento_pago,
+      vencimiento_pago: vencimientoPagoNc,
       condicion_venta: original.lotes.condicion_venta,
       actividad_id: original.lotes.actividad_id,
       observaciones: `Nota de crédito por factura ${original.numero_comprobante}`,
@@ -265,7 +276,7 @@ export async function emitirNotaCredito(
     totales,
     original.lotes.concepto,
     hoy,
-    { periodoDesde: original.lotes.periodo_desde, periodoHasta: original.lotes.periodo_hasta, vencimientoPago: original.lotes.vencimiento_pago },
+    { periodoDesde: original.lotes.periodo_desde, periodoHasta: original.lotes.periodo_hasta, vencimientoPago: vencimientoPagoNc },
     contexto.ambiente,
     contexto.alcanzadoRg3368,
     original.lotes.actividad_id,

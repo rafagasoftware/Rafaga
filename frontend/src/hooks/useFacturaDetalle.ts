@@ -28,6 +28,7 @@ export interface LoteFactura {
   periodo_desde: string | null;
   periodo_hasta: string | null;
   vencimiento_pago: string | null;
+  condicion_venta: string | null;
   observaciones: string | null;
   punto_venta: { numero: number } | null;
   lote_items: Array<{
