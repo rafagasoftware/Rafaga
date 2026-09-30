@@ -54,6 +54,42 @@ adminEmisoresRouter.post('/', requireAdmin, async (req, res) => {
   res.status(201).json(emisor);
 });
 
+// Reenvía a un cliente la forma de entrar a Rafaga, para dos casos:
+// 1) Todavía no confirmó la cuenta (ej. porque el primer link apuntaba a
+//    localhost): reenvía la invitación original.
+// 2) Ya confirmó la cuenta (ej. porque llegó a clickear ese link roto)
+//    pero nunca llegó a elegir contraseña: inviteUserByEmail rechaza
+//    reinvitar a un usuario confirmado, así que en ese caso mandamos un
+//    link de recuperación de contraseña — apunta a la misma pantalla
+//    "aceptar-invitacion", que no le importa si la sesión vino de una
+//    invitación o de una recuperación, solo deja elegir contraseña.
+// A propósito NO reutiliza el POST de alta de arriba: ese hace un insert
+// en "emisores" con el mismo id de Auth, que ya existe, así que el insert
+// duplicado dispara el catch que borra el usuario — y por el "on delete
+// cascade" eso se llevaría puesta la fila del emisor ya creada.
+adminEmisoresRouter.post('/reenviar-invitacion', requireAdmin, async (req, res) => {
+  const { email } = req.body ?? {};
+
+  if (!email) {
+    res.status(400).json({ error: 'Falta el email.' });
+    return;
+  }
+
+  const redirectTo = `${frontendUrl}/aceptar-invitacion`;
+
+  const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, { redirectTo });
+
+  if (inviteError) {
+    const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (recoveryError) {
+      res.status(400).json({ error: recoveryError.message });
+      return;
+    }
+  }
+
+  res.status(200).json({ ok: true });
+});
+
 // Listado simple para el panel de admin.
 adminEmisoresRouter.get('/', requireAdmin, async (_req, res) => {
   const { data, error } = await supabase
