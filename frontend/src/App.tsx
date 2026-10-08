@@ -3,6 +3,7 @@ import { AdminRoute, ProtectedRoute } from './auth/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { AceptarInvitacionPage } from './pages/AceptarInvitacionPage';
 import { AdminInvitarClientePage } from './pages/AdminInvitarClientePage';
+import { AlumnosPage } from './pages/AlumnosPage';
 import { CatalogoPage } from './pages/CatalogoPage';
 import { ClientesPage } from './pages/ClientesPage';
 import { DatosEmisorPage } from './pages/DatosEmisorPage';
@@ -23,6 +24,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<InicioPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
+          <Route path="/alumnos" element={<AlumnosPage />} />
           <Route path="/grupos" element={<GruposPage />} />
           <Route path="/catalogo" element={<CatalogoPage />} />
           <Route path="/puntos-venta" element={<PuntosVentaPage />} />

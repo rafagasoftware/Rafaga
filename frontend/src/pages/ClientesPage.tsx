@@ -1,4 +1,5 @@
 import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
@@ -26,6 +27,7 @@ import { useTablaRemota } from '../hooks/useTablaRemota';
 import { supabase } from '../lib/supabaseClient';
 import type { Cliente, Grupo } from '../types/domain';
 import { ClienteFormDialog, type ClienteFormValues } from './clientes/ClienteFormDialog';
+import { EliminarClienteDialog } from './clientes/EliminarClienteDialog';
 import { ImportarClientesDialog } from './clientes/ImportarClientesDialog';
 
 interface ClienteFila extends Cliente {
@@ -43,6 +45,7 @@ export function ClientesPage() {
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
   const [importarAbierto, setImportarAbierto] = useState(false);
+  const [clienteAEliminar, setClienteAEliminar] = useState<ClienteFila | null>(null);
 
   useEffect(() => {
     supabase
@@ -245,6 +248,9 @@ export function ClientesPage() {
                   <IconButton aria-label="Editar cliente" onClick={() => abrirEdicion(cliente)}>
                     <EditOutlinedIcon fontSize="small" />
                   </IconButton>
+                  <IconButton aria-label="Eliminar cliente" onClick={() => setClienteAEliminar(cliente)}>
+                    <DeleteOutlinedIcon fontSize="small" />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -273,6 +279,8 @@ export function ClientesPage() {
         onClose={() => setDialogAbierto(false)}
         onSave={handleGuardar}
       />
+
+      <EliminarClienteDialog cliente={clienteAEliminar} onClose={() => setClienteAEliminar(null)} onEliminado={recargar} />
 
       <ImportarClientesDialog
         open={importarAbierto}

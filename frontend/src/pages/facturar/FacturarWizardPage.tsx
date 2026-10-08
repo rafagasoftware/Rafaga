@@ -15,6 +15,8 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
@@ -29,10 +31,13 @@ import { ESTADO_COLOR, ESTADO_LABEL } from '../../constants/estadosFactura';
 import { backendUrl } from '../../lib/backendUrl';
 import { idsConNotaCredito } from '../../lib/facturasApi';
 import { supabase } from '../../lib/supabaseClient';
-import type { ActividadArca, CatalogoItem, Cliente, Grupo, PuntoVenta } from '../../types/domain';
+import type { ActividadArca, AlumnoConResponsable, CatalogoItem, Cliente, Grupo, PuntoVenta } from '../../types/domain';
 import { AccionesLote } from './AccionesLote';
-import { calcularTotales, formatearMoneda } from './calculos';
+import { agruparPorResponsable, itemsParaFamilia, usaMarcadorCurso, type ItemDeAlumno } from './alumnos';
+import { calcularTotales, formatearMoneda, type Totales } from './calculos';
 import { Paso1DatosEmision } from './Paso1DatosEmision';
+import { Paso2AlumnoMultiple } from './Paso2AlumnoMultiple';
+import { Paso2AlumnoSimple } from './Paso2AlumnoSimple';
 import { Paso2Multiple } from './Paso2Multiple';
 import { Paso2Simple } from './Paso2Simple';
 import { Paso3Items } from './Paso3Items';
@@ -64,15 +69,26 @@ async function cargarFacturasDelLote(loteId: string): Promise<FacturaResumen[]> 
 
 const TITULOS_PASO = ['Datos de emisión', 'Destinatarios', 'Ítems e importes', 'Revisar y emitir'];
 
-function estadoInicial(modo: 'simple' | 'multiple'): WizardState {
+function estadoInicial(modo: 'simple' | 'multiple', elegirPor: 'cliente' | 'alumno' = 'cliente'): WizardState {
   return {
     modo,
     paso1: { ...PASO1_INICIAL },
+    elegirPor,
     clienteId: null,
     clienteIds: [],
+    alumnoId: null,
+    alumnoIds: [],
     items: [crearItemVacio()],
     observaciones: '',
   };
+}
+
+interface FacturaAEmitir {
+  clienteId: string;
+  // Renglones propios de esta factura (una por responsable de pago, con un
+  // renglón por hijo); null si lleva los mismos ítems que todo el lote.
+  renglones: ItemDeAlumno[] | null;
+  totales: Totales;
 }
 
 export function FacturarWizardPage() {
@@ -92,6 +108,9 @@ export function FacturarWizardPage() {
   // seleccionaron, para poder validar el paso 2 y mostrar nombres en el
   // paso 4 sin volver a pedirlos.
   const [clientesCache, setClientesCache] = useState<Record<string, Cliente>>({});
+  // Igual que clientesCache, pero con los alumnos (cada uno trae su responsable de pago).
+  const [alumnosCache, setAlumnosCache] = useState<Record<string, AlumnoConResponsable>>({});
+  const [tieneAlumnos, setTieneAlumnos] = useState(false);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [clienteGrupos, setClienteGrupos] = useState<Record<string, string[]>>({});
   const [catalogoItems, setCatalogoItems] = useState<CatalogoItem[]>([]);
@@ -109,13 +128,19 @@ export function FacturarWizardPage() {
     if (!session) return;
 
     async function cargar() {
-      const [pv, gr, cg, ci, em] = await Promise.all([
+      const [pv, gr, cg, ci, em, al] = await Promise.all([
         supabase.from('puntos_venta').select('*').eq('habilitado', true).order('numero'),
         supabase.from('grupos').select('*').order('nombre'),
         supabase.from('clientes_grupos').select('cliente_id, grupo_id'),
         supabase.from('catalogo_items').select('*').order('codigo'),
         supabase.from('emisores').select('condicion_iva, condicion_iva_arca, actividades').eq('id', session!.user.id).single(),
+        supabase.from('alumnos').select('*', { count: 'exact', head: true }),
       ]);
+
+      // Quien ya cargó alumnos arranca eligiendo por alumno; el resto, por cliente como siempre.
+      const hayAlumnos = (al.count ?? 0) > 0;
+      setTieneAlumnos(hayAlumnos);
+      if (hayAlumnos) setEstado((prev) => ({ ...prev, elegirPor: 'alumno' }));
 
       setPuntosVenta(pv.data ?? []);
       setGrupos(gr.data ?? []);
@@ -148,6 +173,14 @@ export function FacturarWizardPage() {
     });
   }, []);
 
+  const registrarAlumnos = useCallback((vistos: AlumnoConResponsable[]) => {
+    setAlumnosCache((prev) => {
+      const siguiente = { ...prev };
+      for (const alumno of vistos) siguiente[alumno.id] = alumno;
+      return siguiente;
+    });
+  }, []);
+
   const tiposDisponibles = tiposComprobanteDisponibles(condicionIvaEmisor ?? '');
 
   // Si la condición de IVA del emisor restringe las opciones (ej. pasa a
@@ -163,6 +196,11 @@ export function FacturarWizardPage() {
     return <Navigate to="/" replace />;
   }
 
+  const porAlumno = estado.elegirPor === 'alumno';
+  const idsAlumnosElegidos = estado.modo === 'simple' ? (estado.alumnoId ? [estado.alumnoId] : []) : estado.alumnoIds;
+  const alumnosElegidos = idsAlumnosElegidos.map((id) => alumnosCache[id]).filter((a): a is AlumnoConResponsable => Boolean(a));
+  const alumnosSinCurso = alumnosElegidos.filter((a) => !a.curso?.trim()).length;
+
   function puedeAvanzar(): boolean {
     if (paso === 1) {
       const p1 = estado.paso1;
@@ -172,6 +210,13 @@ export function FacturarWizardPage() {
     }
     if (paso === 2) {
       const tipoComprobante = estado.paso1.tipoComprobante;
+      if (porAlumno) {
+        return (
+          alumnosElegidos.length === idsAlumnosElegidos.length &&
+          alumnosElegidos.length > 0 &&
+          alumnosElegidos.every((a) => a.cliente !== null && esClienteValidoParaComprobante(a.cliente, tipoComprobante))
+        );
+      }
       if (estado.modo === 'simple') {
         const cliente = estado.clienteId ? clientesCache[estado.clienteId] : undefined;
         return Boolean(cliente) && esClienteValidoParaComprobante(cliente!, tipoComprobante);
@@ -184,7 +229,9 @@ export function FacturarWizardPage() {
       );
     }
     if (paso === 3) {
-      return estado.items.some((item) => item.descripcion && Number(item.cantidad) > 0);
+      // Con [curso] en el texto y algún alumno sin curso, la factura saldría con un hueco.
+      const faltaCurso = porAlumno && alumnosSinCurso > 0 && estado.items.some((item) => usaMarcadorCurso(item.descripcion));
+      return !faltaCurso && estado.items.some((item) => item.descripcion && Number(item.cantidad) > 0);
     }
     return true;
   }
@@ -193,8 +240,22 @@ export function FacturarWizardPage() {
     setEmitiendo(true);
     setError(null);
 
-    const clienteIds = estado.modo === 'simple' ? [estado.clienteId!] : estado.clienteIds;
-    const totales = calcularTotales(estado.items, esComprobanteSinIva(estado.paso1.tipoComprobante));
+    const sinIva = esComprobanteSinIva(estado.paso1.tipoComprobante);
+    const totalesPorItems = calcularTotales(estado.items, sinIva);
+
+    // Por cliente: una factura por cliente, con los mismos ítems. Por alumno:
+    // una por responsable de pago, con los ítems repetidos por cada hijo suyo
+    // (así que el total cambia de una factura a otra).
+    const facturasAEmitir: FacturaAEmitir[] = porAlumno
+      ? agruparPorResponsable(alumnosElegidos).map((familia) => {
+          const renglones = itemsParaFamilia(estado.items, familia.alumnos);
+          return { clienteId: familia.cliente.id, renglones, totales: calcularTotales(renglones, sinIva) };
+        })
+      : (estado.modo === 'simple' ? [estado.clienteId!] : estado.clienteIds).map((clienteId) => ({
+          clienteId,
+          renglones: null,
+          totales: totalesPorItems,
+        }));
 
     const { data: lote, error: loteError } = await supabase
       .from('lotes')
@@ -209,7 +270,7 @@ export function FacturarWizardPage() {
         condicion_venta: estado.paso1.condicionesVenta.join(', '),
         actividad_id: estado.paso1.actividadId,
         observaciones: estado.observaciones || null,
-        total_clientes: clienteIds.length,
+        total_clientes: facturasAEmitir.length,
       })
       .select('id')
       .single();
@@ -241,22 +302,55 @@ export function FacturarWizardPage() {
       return;
     }
 
-    const { error: facturasError } = await supabase.from('facturas').insert(
-      clienteIds.map((clienteId) => ({
-        lote_id: lote.id,
-        cliente_id: clienteId,
-        estado: 'pendiente',
-        importe_neto: totales.neto,
-        iva_total: totales.ivaTotal,
-        otros_tributos: 0,
-        importe_total: totales.total,
-      })),
-    );
+    const { data: facturasCreadas, error: facturasError } = await supabase
+      .from('facturas')
+      .insert(
+        facturasAEmitir.map(({ clienteId, totales }) => ({
+          lote_id: lote.id,
+          cliente_id: clienteId,
+          estado: 'pendiente',
+          importe_neto: totales.neto,
+          iva_total: totales.ivaTotal,
+          otros_tributos: 0,
+          importe_total: totales.total,
+        })),
+      )
+      .select('id, cliente_id');
 
     if (facturasError) {
       setError('No se pudieron guardar las facturas.');
       setEmitiendo(false);
       return;
+    }
+
+    if (porAlumno) {
+      const facturaIdPorCliente = new Map((facturasCreadas ?? []).map((f) => [f.cliente_id as string, f.id as string]));
+
+      const { error: renglonesError } = await supabase.from('factura_items').insert(
+        facturasAEmitir.flatMap(({ clienteId, renglones }) =>
+          (renglones ?? []).map((item, orden) => ({
+            factura_id: facturaIdPorCliente.get(clienteId),
+            alumno_id: item.alumnoId,
+            codigo: item.codigo,
+            descripcion: item.descripcion,
+            cantidad: Number(item.cantidad) || 0,
+            unidad_medida: item.unidadMedida || null,
+            precio_unitario: Number(item.precioUnitario) || 0,
+            bonificacion_pct: Number(item.bonificacionPct) || 0,
+            alicuota_iva: item.alicuotaIva,
+            orden,
+          })),
+        ),
+      );
+
+      // Sin sus renglones una factura de alumnos caería a los ítems del lote
+      // (que son por alumno, no por familia): se descarta todo antes de emitir.
+      if (renglonesError) {
+        await supabase.from('lotes').delete().eq('id', lote.id);
+        setError('No se pudieron guardar los renglones de las facturas. No se emitió nada.');
+        setEmitiendo(false);
+        return;
+      }
     }
 
     try {
@@ -381,7 +475,7 @@ export function FacturarWizardPage() {
           </Button>
           <Button
             onClick={() => {
-              setEstado(estadoInicial(modo));
+              setEstado(estadoInicial(modo, tieneAlumnos ? 'alumno' : 'cliente'));
               setPaso(1);
               setGuardado(null);
             }}
@@ -436,7 +530,29 @@ export function FacturarWizardPage() {
         />
       )}
 
-      {paso === 2 && estado.modo === 'simple' && (
+      {paso === 2 && (
+        <Box sx={{ mb: 3 }}>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={estado.elegirPor}
+            onChange={(_e, valor: 'cliente' | 'alumno' | null) => {
+              if (valor) setEstado((prev) => ({ ...prev, elegirPor: valor }));
+            }}
+          >
+            <ToggleButton value="cliente">Por cliente</ToggleButton>
+            <ToggleButton value="alumno">Por alumno</ToggleButton>
+          </ToggleButtonGroup>
+          {porAlumno && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Elegís a los alumnos y cada factura sale a nombre de su responsable de pago.
+              {estado.modo === 'multiple' && ' Si un responsable tiene varios hijos elegidos, recibe una sola factura con un renglón por cada uno.'}
+            </Typography>
+          )}
+        </Box>
+      )}
+
+      {paso === 2 && estado.modo === 'simple' && !porAlumno && (
         <Paso2Simple
           clienteId={estado.clienteId}
           onChange={(clienteId) => setEstado((prev) => ({ ...prev, clienteId }))}
@@ -445,13 +561,32 @@ export function FacturarWizardPage() {
         />
       )}
 
-      {paso === 2 && estado.modo === 'multiple' && (
+      {paso === 2 && estado.modo === 'simple' && porAlumno && (
+        <Paso2AlumnoSimple
+          alumnoId={estado.alumnoId}
+          onChange={(alumnoId) => setEstado((prev) => ({ ...prev, alumnoId }))}
+          onAlumnosVistos={registrarAlumnos}
+          tipoComprobante={estado.paso1.tipoComprobante}
+        />
+      )}
+
+      {paso === 2 && estado.modo === 'multiple' && !porAlumno && (
         <Paso2Multiple
           grupos={grupos}
           clienteGrupos={clienteGrupos}
           seleccionados={estado.clienteIds}
           onChange={(clienteIds) => setEstado((prev) => ({ ...prev, clienteIds }))}
           onClientesVistos={registrarClientes}
+          paso1={estado.paso1}
+        />
+      )}
+
+      {paso === 2 && estado.modo === 'multiple' && porAlumno && (
+        <Paso2AlumnoMultiple
+          seleccionados={estado.alumnoIds}
+          onChange={(alumnoIds) => setEstado((prev) => ({ ...prev, alumnoIds }))}
+          onAlumnosVistos={registrarAlumnos}
+          alumnosCache={alumnosCache}
           paso1={estado.paso1}
         />
       )}
@@ -465,6 +600,9 @@ export function FacturarWizardPage() {
           catalogoItems={catalogoItems}
           modo={estado.modo}
           tipoComprobante={estado.paso1.tipoComprobante}
+          porAlumno={porAlumno}
+          ejemploAlumno={alumnosElegidos[0] ?? null}
+          alumnosSinCurso={alumnosSinCurso}
         />
       )}
 
@@ -473,6 +611,7 @@ export function FacturarWizardPage() {
           estado={estado}
           puntosVenta={puntosVenta}
           clientesCache={clientesCache}
+          alumnosCache={alumnosCache}
           onEditarPaso={setPaso}
           onEmitir={handleEmitir}
           emitiendo={emitiendo}

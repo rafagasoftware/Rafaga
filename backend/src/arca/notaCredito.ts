@@ -1,9 +1,10 @@
 import { supabase } from '../supabaseClient';
 import { emitirFactura } from './emitirFactura';
+import { cargarItemsDeFactura } from './itemsDeFactura';
 import type { Ambiente, Credenciales } from './wsaa';
 import { obtenerCredencialesWSAA } from './wsaa';
 import { CBTE_TIPO_ARCA, calcularTotalesItems, consultarUltimoAutorizado, esCbteTipoSinIva } from './wsfe';
-import type { ClienteParaFactura, ItemParaTotales } from './wsfe';
+import type { ClienteParaFactura } from './wsfe';
 
 // Todo lo que sale mal devuelve una Falla en vez de tirar: las rutas la
 // traducen a una respuesta HTTP (emisión individual) o la cuentan y siguen
@@ -174,17 +175,15 @@ export async function emitirNotaCredito(
 ): Promise<{ ok: true; aprobado: boolean; factura: NotaCreditoResultado | null } | Falla> {
   const { original, tipoComprobanteNc, cbteTipoNc, cbteTipoOriginal, ptoVta } = preparada;
 
-  const { data: itemsOriginales } = await supabase
-    .from('lote_items')
-    .select('catalogo_item_id, codigo, descripcion, cantidad, unidad_medida, precio_unitario, bonificacion_pct, alicuota_iva')
-    .eq('lote_id', original.lote_id)
-    .order('orden');
+  // Los renglones de la factura original tal como salieron (si fue armada
+  // desde alumnos, son los suyos propios y no los del lote).
+  const itemsOriginales = await cargarItemsDeFactura(original.id, original.lote_id);
 
-  if (!itemsOriginales || itemsOriginales.length === 0) {
+  if (itemsOriginales.length === 0) {
     return { ok: false, status: 400, error: 'No se encontraron los ítems de la factura original.' };
   }
 
-  const totales = calcularTotalesItems(itemsOriginales as ItemParaTotales[], esCbteTipoSinIva(cbteTipoNc));
+  const totales = calcularTotalesItems(itemsOriginales, esCbteTipoSinIva(cbteTipoNc));
   const hoy = new Date().toISOString().slice(0, 10);
 
   // ARCA exige que FchVtoPago no sea anterior a la fecha del comprobante.

@@ -11,7 +11,8 @@ import {
 import type { Ambiente } from '../arca/wsaa';
 import { obtenerCredencialesWSAA } from '../arca/wsaa';
 import { CBTE_TIPO_ARCA, calcularTotalesItems, consultarUltimoAutorizado, esCbteTipoSinIva } from '../arca/wsfe';
-import type { ClienteParaFactura, ComprobanteAsociado, ItemParaTotales } from '../arca/wsfe';
+import type { ClienteParaFactura, ComprobanteAsociado } from '../arca/wsfe';
+import { cargarItemsDeFactura, importeCoincide, MOTIVO_IMPORTE_NO_COINCIDE } from '../arca/itemsDeFactura';
 import { requireAuth } from '../middleware/auth';
 import { obtenerPdfDeFactura } from '../pdf/obtenerPdfFactura';
 import { supabase } from '../supabaseClient';
@@ -27,6 +28,7 @@ interface CertificadoLeido {
 interface FacturaConRelaciones {
   id: string;
   estado: string;
+  importe_total: number | null;
   lote_id: string;
   factura_original_id: string | null;
   clientes: ClienteParaFactura | null;
@@ -53,7 +55,7 @@ facturasRouter.post('/:id/reintentar', requireAuth, async (req, res) => {
   const { data } = await supabase
     .from('facturas')
     .select(
-      'id, estado, lote_id, factura_original_id, clientes!inner(tipo_documento, numero_documento, razon_social, domicilio, condicion_iva), lotes!inner(tipo_comprobante, concepto, fecha_emision, periodo_desde, periodo_hasta, vencimiento_pago, actividad_id, puntos_venta(numero))',
+      'id, estado, importe_total, lote_id, factura_original_id, clientes!inner(tipo_documento, numero_documento, razon_social, domicilio, condicion_iva), lotes!inner(tipo_comprobante, concepto, fecha_emision, periodo_desde, periodo_hasta, vencimiento_pago, actividad_id, puntos_venta(numero))',
     )
     .eq('id', req.params.id)
     .eq('emisor_id', req.emisorId)
@@ -98,8 +100,8 @@ facturasRouter.post('/:id/reintentar', requireAuth, async (req, res) => {
     comprobanteAsociado = { tipo: cbteTipoOriginal, ptoVta, nro: Number(original.numero_comprobante) };
   }
 
-  const [{ data: items }, { data: certificado }, { data: emisor }] = await Promise.all([
-    supabase.from('lote_items').select('cantidad, precio_unitario, bonificacion_pct, alicuota_iva').eq('lote_id', factura.lote_id),
+  const [items, { data: certificado }, { data: emisor }] = await Promise.all([
+    cargarItemsDeFactura(factura.id, factura.lote_id),
     supabase.rpc('leer_certificado_arca', { p_emisor_id: req.emisorId }).maybeSingle<CertificadoLeido>(),
     supabase.from('emisores').select('cuit, alcanzado_rg_3368').eq('id', req.emisorId).single(),
   ]);
@@ -108,12 +110,16 @@ facturasRouter.post('/:id/reintentar', requireAuth, async (req, res) => {
     res.status(400).json({ error: 'Todavía no configuraste el certificado de ARCA para esta cuenta.' });
     return;
   }
-  if (!emisor || !items || items.length === 0) {
+  if (!emisor || items.length === 0) {
     res.status(400).json({ error: 'No se encontraron los ítems del lote.' });
     return;
   }
 
-  const totales = calcularTotalesItems(items as ItemParaTotales[], esCbteTipoSinIva(cbteTipo));
+  const totales = calcularTotalesItems(items, esCbteTipoSinIva(cbteTipo));
+  if (!importeCoincide(factura.importe_total, totales.total)) {
+    res.status(400).json({ error: MOTIVO_IMPORTE_NO_COINCIDE });
+    return;
+  }
   const ambiente = certificado.ambiente;
 
   let credenciales;

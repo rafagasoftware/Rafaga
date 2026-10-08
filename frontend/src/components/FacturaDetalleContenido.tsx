@@ -66,9 +66,9 @@ export function FacturaDetalleContenido({ facturaId, onHuboCambios }: Props) {
   }
 
   const items: ItemFactura[] =
-    factura?.lote?.lote_items.map((row) => ({
+    factura?.items.map((row) => ({
       id: row.id,
-      catalogoItemId: row.catalogo_item_id,
+      catalogoItemId: row.catalogo_item_id ?? null,
       codigo: row.codigo,
       descripcion: row.descripcion,
       cantidad: String(row.cantidad),

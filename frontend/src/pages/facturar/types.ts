@@ -25,8 +25,13 @@ export interface ItemFactura {
 export interface WizardState {
   modo: 'simple' | 'multiple';
   paso1: Paso1Valores;
+  // Cómo se elige a quién facturar: por cliente (como siempre) o por alumno,
+  // donde la factura sale a nombre del responsable de pago del alumno.
+  elegirPor: 'cliente' | 'alumno';
   clienteId: string | null;
   clienteIds: string[];
+  alumnoId: string | null;
+  alumnoIds: string[];
   items: ItemFactura[];
   observaciones: string;
 }

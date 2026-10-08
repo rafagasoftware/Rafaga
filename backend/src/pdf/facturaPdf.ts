@@ -253,13 +253,13 @@ export async function generarFacturaPdf(datos: DatosFacturaPdf): Promise<Buffer>
   // Ítems
   y += alturaCajaReceptor + 20;
   const columnas = [
-    { titulo: 'Código', x: 40, ancho: 50 },
-    { titulo: 'Descripción', x: 95, ancho: 150 },
-    { titulo: 'Cant.', x: 250, ancho: 40, align: 'right' as const },
-    { titulo: 'P. unitario', x: 300, ancho: 55, align: 'right' as const },
-    { titulo: 'Bonif. %', x: 365, ancho: 35, align: 'right' as const },
-    { titulo: 'IVA', x: 410, ancho: 45 },
-    { titulo: 'Subtotal', x: 460, ancho: 95, align: 'right' as const },
+    { titulo: 'Código', x: 40, ancho: 45 },
+    { titulo: 'Descripción', x: 90, ancho: 185 },
+    { titulo: 'Cant.', x: 280, ancho: 40, align: 'right' as const },
+    { titulo: 'P. unitario', x: 325, ancho: 55, align: 'right' as const },
+    { titulo: 'Bonif. %', x: 385, ancho: 35, align: 'right' as const },
+    { titulo: 'IVA', x: 425, ancho: 40 },
+    { titulo: 'Subtotal', x: 470, ancho: 85, align: 'right' as const },
   ];
 
   doc.font('Helvetica-Bold').fontSize(8).fillColor('#000');
@@ -285,7 +285,9 @@ export async function generarFacturaPdf(datos: DatosFacturaPdf): Promise<Buffer>
     doc.text(String(item.bonificacion_pct), columnas[4].x, y, { width: columnas[4].ancho, align: 'right' });
     if (!sinDiscriminarIva) doc.text(ALICUOTA_LABEL[item.alicuota_iva] ?? item.alicuota_iva, columnas[5].x, y, { width: columnas[5].ancho });
     doc.text(formatearMoneda(subtotal), columnas[6].x, y, { width: columnas[6].ancho, align: 'right' });
-    y += 16;
+    // La descripción puede ocupar varias líneas (ej. el concepto de una cuota
+    // con el nombre del alumno): el renglón crece en vez de pisar al siguiente.
+    y += Math.max(16, doc.heightOfString(item.descripcion, { width: columnas[1].ancho }) + 6);
   }
 
   // Totales

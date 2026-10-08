@@ -14,6 +14,18 @@ export interface Grupo {
   nombre: string;
 }
 
+export interface Alumno {
+  id: string;
+  nombre: string;
+  curso: string | null;
+  cliente_id: string;
+  creado_en: string;
+}
+
+export interface AlumnoConResponsable extends Alumno {
+  cliente: Cliente | null;
+}
+
 export interface CatalogoItem {
   id: string;
   codigo: number;

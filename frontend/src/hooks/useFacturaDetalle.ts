@@ -21,6 +21,19 @@ export interface ClienteFactura {
   condicion_iva: string;
 }
 
+export interface ItemDetalle {
+  id: string;
+  catalogo_item_id?: string | null;
+  codigo: string;
+  descripcion: string;
+  cantidad: number;
+  unidad_medida: string | null;
+  precio_unitario: number;
+  bonificacion_pct: number;
+  alicuota_iva: ItemFactura['alicuotaIva'];
+  orden: number;
+}
+
 export interface LoteFactura {
   tipo_comprobante: string;
   concepto: string;
@@ -31,17 +44,7 @@ export interface LoteFactura {
   condicion_venta: string | null;
   observaciones: string | null;
   punto_venta: { numero: number } | null;
-  lote_items: Array<{
-    id: string;
-    catalogo_item_id: string | null;
-    codigo: string;
-    descripcion: string;
-    cantidad: number;
-    unidad_medida: string | null;
-    precio_unitario: number;
-    bonificacion_pct: number;
-    alicuota_iva: ItemFactura['alicuotaIva'];
-  }>;
+  lote_items: ItemDetalle[];
 }
 
 export interface FacturaDetalle {
@@ -54,6 +57,9 @@ export interface FacturaDetalle {
   importe_total: number | null;
   cliente: ClienteFactura | null;
   lote: LoteFactura | null;
+  // Los renglones de esta factura: los propios si fue armada desde alumnos
+  // (uno por hijo) y, si no, los del lote, iguales para todas.
+  items: ItemDetalle[];
 }
 
 interface FilaFacturaCruda {
@@ -69,6 +75,7 @@ interface FilaFacturaCruda {
   cliente_razon_social: string | null;
   cliente_domicilio: string | null;
   cliente_condicion_iva: string | null;
+  factura_items: ItemDetalle[];
   lote: LoteFactura | null;
 }
 
@@ -76,10 +83,14 @@ interface FilaFacturaCruda {
 // no con un join en vivo contra clientes: un comprobante ya emitido no
 // debe cambiar si después se edita el cliente en la libreta.
 const SELECT_FACTURA =
-  'id, numero_comprobante, cae, cae_vencimiento, estado, motivo_error, importe_total, cliente_tipo_documento, cliente_numero_documento, cliente_razon_social, cliente_domicilio, cliente_condicion_iva, lote:lotes(*, punto_venta:puntos_venta(numero), lote_items(*))';
+  'id, numero_comprobante, cae, cae_vencimiento, estado, motivo_error, importe_total, cliente_tipo_documento, cliente_numero_documento, cliente_razon_social, cliente_domicilio, cliente_condicion_iva, factura_items(*), lote:lotes(*, punto_venta:puntos_venta(numero), lote_items(*))';
 
 function mapearFactura(fila: FilaFacturaCruda): FacturaDetalle {
+  const propios = fila.factura_items ?? [];
+  const items = (propios.length > 0 ? propios : (fila.lote?.lote_items ?? [])).slice().sort((a, b) => a.orden - b.orden);
+
   return {
+    items,
     id: fila.id,
     numero_comprobante: fila.numero_comprobante,
     cae: fila.cae,

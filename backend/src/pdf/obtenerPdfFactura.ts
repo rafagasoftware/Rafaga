@@ -12,6 +12,7 @@ interface FacturaParaPdf {
   cliente_razon_social: string | null;
   cliente_domicilio: string | null;
   cliente_condicion_iva: string | null;
+  factura_items: ItemConOrden[];
   lotes: {
     tipo_comprobante: string;
     fecha_emision: string;
@@ -20,17 +21,22 @@ interface FacturaParaPdf {
     vencimiento_pago: string | null;
     condicion_venta: string | null;
     puntos_venta: { numero: number } | null;
-    lote_items: Array<{
-      codigo: string;
-      descripcion: string;
-      cantidad: number;
-      unidad_medida: string | null;
-      precio_unitario: number;
-      bonificacion_pct: number;
-      alicuota_iva: string;
-    }>;
+    lote_items: ItemConOrden[];
   } | null;
 }
+
+interface ItemConOrden {
+  codigo: string;
+  descripcion: string;
+  cantidad: number;
+  unidad_medida: string | null;
+  precio_unitario: number;
+  bonificacion_pct: number;
+  alicuota_iva: string;
+  orden: number;
+}
+
+const porOrden = (a: ItemConOrden, b: ItemConOrden) => a.orden - b.orden;
 
 export interface EmisorParaPdf {
   razon_social: string;
@@ -75,7 +81,7 @@ export async function obtenerPdfDeFactura(facturaId: string, emisorId: string, e
   const { data } = await supabase
     .from('facturas')
     .select(
-      'numero_comprobante, cae, cae_vencimiento, importe_total, estado, cliente_tipo_documento, cliente_numero_documento, cliente_razon_social, cliente_domicilio, cliente_condicion_iva, lotes!inner(tipo_comprobante, fecha_emision, periodo_desde, periodo_hasta, vencimiento_pago, condicion_venta, puntos_venta(numero), lote_items(codigo, descripcion, cantidad, unidad_medida, precio_unitario, bonificacion_pct, alicuota_iva))',
+      'numero_comprobante, cae, cae_vencimiento, importe_total, estado, cliente_tipo_documento, cliente_numero_documento, cliente_razon_social, cliente_domicilio, cliente_condicion_iva, factura_items(codigo, descripcion, cantidad, unidad_medida, precio_unitario, bonificacion_pct, alicuota_iva, orden), lotes!inner(tipo_comprobante, fecha_emision, periodo_desde, periodo_hasta, vencimiento_pago, condicion_venta, puntos_venta(numero), lote_items(codigo, descripcion, cantidad, unidad_medida, precio_unitario, bonificacion_pct, alicuota_iva, orden))',
     )
     .eq('id', facturaId)
     .eq('emisor_id', emisorId)
@@ -100,6 +106,10 @@ export async function obtenerPdfDeFactura(facturaId: string, emisorId: string, e
     return { ok: false, status: 404, error: 'No se encontró el emisor.' };
   }
 
+  // Los renglones propios de la factura (armada desde alumnos) si los tiene;
+  // si no, los del lote, iguales para todas.
+  const items = (factura.factura_items.length > 0 ? factura.factura_items : factura.lotes.lote_items).slice().sort(porOrden);
+
   const pdf = await generarFacturaPdf({
     emisor,
     factura: {
@@ -122,7 +132,7 @@ export async function obtenerPdfDeFactura(facturaId: string, emisorId: string, e
       condicion_venta: factura.lotes.condicion_venta,
       punto_venta_numero: ptoVta,
     },
-    items: factura.lotes.lote_items,
+    items,
   });
 
   return {
